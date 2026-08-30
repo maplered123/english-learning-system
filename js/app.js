@@ -58,6 +58,75 @@ const API = {
   }
 };
 
+// ===== 本地多账号认证（纯前端模式） =====
+const LocalAuth = {
+  usersKey: 'elsp_users',
+  
+  // 简单哈希（用于本地密码存储，非安全场景）
+  simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return 'h_' + Math.abs(hash).toString(36) + '_' + str.length;
+  },
+  
+  getUsers() {
+    try { return JSON.parse(localStorage.getItem(this.usersKey) || '{}'); }
+    catch(e) { return {}; }
+  },
+  
+  saveUsers(users) {
+    localStorage.setItem(this.usersKey, JSON.stringify(users));
+  },
+  
+  register(username, password) {
+    const users = this.getUsers();
+    if (users[username]) {
+      return { success: false, error: '用户名已存在' };
+    }
+    users[username] = {
+      username,
+      password: this.simpleHash(password),
+      createdAt: Date.now()
+    };
+    this.saveUsers(users);
+    return { success: true, user: { username } };
+  },
+  
+  login(username, password) {
+    const users = this.getUsers();
+    const user = users[username];
+    if (!user) {
+      return { success: false, error: '用户不存在' };
+    }
+    if (user.password !== this.simpleHash(password)) {
+      return { success: false, error: '密码错误' };
+    }
+    return { success: true, user: { username } };
+  },
+  
+  // 当前登录用户
+  currentKey: 'elsp_current_user',
+  
+  getCurrentUser() {
+    try { return JSON.parse(localStorage.getItem(this.currentKey) || 'null'); }
+    catch(e) { return null; }
+  },
+  
+  setCurrentUser(user) {
+    if (user) {
+      localStorage.setItem(this.currentKey, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(this.currentKey);
+    }
+  },
+  
+  isLoggedIn() { return !!this.getCurrentUser(); }
+};
+
 // ===== 状态管理 =====
 const State = {
   currentModule: 'dashboard',
@@ -72,9 +141,13 @@ const State = {
   syncTimer: null
 };
 
-// ===== 本地存储管理 =====
+// ===== 本地存储管理（按用户隔离） =====
 const Storage = {
-  getKey(key) { return 'elsp_' + key; },
+  getKey(key) {
+    const user = LocalAuth.getCurrentUser();
+    const prefix = user ? ('elsp_u_' + user.username + '_') : 'elsp_';
+    return prefix + key;
+  },
   get(key, def) {
     try { const v = localStorage.getItem(this.getKey(key)); return v ? JSON.parse(v) : def; }
     catch(e) { return def; }
@@ -125,7 +198,7 @@ const Storage = {
   },
   // 同步相关
   async syncWithServer() {
-    if (!API.isOnline() || !API.isLoggedIn()) return;
+    if (!API.isOnline() || !LocalAuth.isLoggedIn()) return;
     SyncManager.syncAll();
   }
 };
@@ -148,7 +221,8 @@ const SyncManager = {
   },
   
   async syncAll() {
-    if (this.syncing || !API.isOnline() || !API.isLoggedIn()) return;
+    if (this.syncing || !API.isOnline()) return;
+    if (!LocalAuth.isLoggedIn()) return;
     this.syncing = true;
     this.showSync('同步中...');
     
@@ -193,6 +267,7 @@ const SyncManager = {
   },
   
   scheduleSync() {
+    if (!API.isOnline()) return;
     if (State.syncTimer) clearTimeout(State.syncTimer);
     State.syncTimer = setTimeout(() => this.syncAll(), 2000);
   }
@@ -996,8 +1071,8 @@ window.__app = {
     Nav.goTo('dashboard'); 
     this.updateUserUI();
     this._setupAuthForms();
-    // 已登录则自动同步
-    if (API.isOnline() && API.isLoggedIn()) {
+    // 已登录且在线则自动同步
+    if (API.isOnline() && LocalAuth.isLoggedIn()) {
       setTimeout(() => SyncManager.syncAll(), 1000);
     }
   },
@@ -1393,10 +1468,6 @@ window.__app.skipWrong = function() {
 
 // ===== 认证相关 =====
 window.__app.showLogin = function() {
-  if (!API.isOnline()) {
-    Utils.toast('当前为本地模式，请通过服务器访问以使用登录功能', 'info');
-    return;
-  }
   Utils.$('authModalOverlay').classList.add('active');
   this.switchAuthTab('login');
 };
@@ -1414,14 +1485,17 @@ window.__app.switchAuthTab = function(tab) {
 
 window.__app.doLogin = async function(username, password) {
   try {
-    const res = await API.request('/login', 'POST', { username, password });
+    // 优先本地认证
+    const res = LocalAuth.login(username, password);
     if (res.success) {
-      API.setToken(res.token);
-      API.setUser(res.user);
+      LocalAuth.setCurrentUser(res.user);
       this.updateUserUI();
       this.closeAuthModal();
-      Utils.toast('登录成功，正在同步数据...', 'success');
-      SyncManager.syncAll();
+      Utils.toast('登录成功！', 'success');
+      // 如果在线则同步数据
+      if (API.isOnline()) {
+        SyncManager.syncAll();
+      }
       return true;
     }
     Utils.toast(res.error || '登录失败', 'error');
@@ -1434,14 +1508,17 @@ window.__app.doLogin = async function(username, password) {
 
 window.__app.doRegister = async function(username, password) {
   try {
-    const res = await API.request('/register', 'POST', { username, password });
+    if (username.length < 2) { Utils.toast('用户名至少2位', 'warning'); return false; }
+    if (password.length < 4) { Utils.toast('密码至少4位', 'warning'); return false; }
+    const res = LocalAuth.register(username, password);
     if (res.success) {
-      API.setToken(res.token);
-      API.setUser(res.user);
+      LocalAuth.setCurrentUser(res.user);
       this.updateUserUI();
       this.closeAuthModal();
       Utils.toast('注册成功，已自动登录', 'success');
-      SyncManager.syncAll();
+      if (API.isOnline()) {
+        SyncManager.syncAll();
+      }
       return true;
     }
     Utils.toast(res.error || '注册失败', 'error');
@@ -1453,16 +1530,17 @@ window.__app.doRegister = async function(username, password) {
 };
 
 window.__app.logout = function() {
-  if (confirm('确定要退出登录吗？本地数据将保留。')) {
-    API.setToken(null);
-    API.setUser(null);
+  if (confirm('确定要退出登录吗？学习数据会保留在本机上。')) {
+    LocalAuth.setCurrentUser(null);
     this.updateUserUI();
     Utils.toast('已退出登录', 'info');
+    // 刷新页面以重置状态
+    location.reload();
   }
 };
 
 window.__app.updateUserUI = function() {
-  const user = API.getUser();
+  const user = LocalAuth.getCurrentUser();
   const nameEl = Utils.$('userName');
   const btnEl = Utils.$('loginBtn');
   if (user) {
@@ -1477,8 +1555,12 @@ window.__app.updateUserUI = function() {
 };
 
 window.__app.manualSync = function() {
-  if (!API.isLoggedIn()) {
+  if (!LocalAuth.isLoggedIn()) {
     Utils.toast('请先登录', 'warning');
+    return;
+  }
+  if (!API.isOnline()) {
+    Utils.toast('本地模式下数据已保存在本机', 'info');
     return;
   }
   SyncManager.syncAll();
