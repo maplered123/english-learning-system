@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4a6cf7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="英语学习">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="专升本英语词汇、语法、应用文、阅读全功能学习平台">
+    <title>专升本英语学习系统</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="menuToggle" class="menu-toggle" aria-label="菜单">
+                    <span></span><span></span><span></span>
+                </button>
+                <h1 class="app-title">📚 专升本英语学习系统</h1>
+            </div>
+            <div class="header-right">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="overallProgress"></div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+                <div class="user-info" id="userInfo">
+                    <span class="user-name" id="userName">未登录</span>
+                    <button class="btn btn-sm btn-outline-light" id="loginBtn" onclick="window.__app.showLogin()">登录</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-body">
+            <!-- 侧边导航栏 -->
+            <aside class="sidebar" id="sidebar">
+                <nav class="nav-menu">
+                    <div class="nav-section">
+                        <div class="nav-section-title">词汇</div>
+                        <a class="nav-item" data-module="vocab-learn">
+                            <span class="nav-icon">📖</span> 词汇学习
+                        </a>
+                        <a class="nav-item" data-module="vocab-practice">
+                            <span class="nav-icon">✏️</span> 词汇练习
+                        </a>
+                    </div>
+                    <div class="nav-section">
+                        <div class="nav-section-title">语法</div>
+                        <a class="nav-item" data-module="grammar-learn">
+                            <span class="nav-icon">📐</span> 语法学习
+                        </a>
+                        <a class="nav-item" data-module="grammar-practice">
+                            <span class="nav-icon">📝</span> 语法练习
+                        </a>
+                    </div>
+                    <div class="nav-section">
+                        <div class="nav-section-title">应用文</div>
+                        <a class="nav-item" data-module="writing-learn">
+                            <span class="nav-icon">✒️</span> 应用文学习
+                        </a>
+                        <a class="nav-item" data-module="writing-practice">
+                            <span class="nav-icon">📋</span> 应用文练习
+                        </a>
+                    </div>
+                    <div class="nav-section">
+                        <div class="nav-section-title">阅读</div>
+                        <a class="nav-item" data-module="reading-learn">
+                            <span class="nav-icon">🔍</span> 阅读文库
+                        </a>
+                        <a class="nav-item" data-module="reading-practice">
+                            <span class="nav-icon">📖</span> 阅读练习
+                        </a>
+                    </div>
+                    <div class="nav-section">
+                        <div class="nav-section-title">工具</div>
+                        <a class="nav-item" data-module="wrong-book">
+                            <span class="nav-icon">❌</span> 错题本
+                        </a>
+                        <a class="nav-item" data-module="dashboard">
+                            <span class="nav-icon">📊</span> 学习仪表盘
+                        </a>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- 主内容区 -->
+            <main class="content" id="mainContent">
+                <!-- 动态内容会在这里渲染 -->
+            </main>
+        </div>
+    </div>
+
+    <!-- 单词详情弹窗 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="wordModal">
+            <button class="modal-close" id="modalClose">&times;</button>
+            <div class="modal-content" id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- 图片预览弹窗 -->
+    <div class="modal-overlay" id="imageModalOverlay">
+        <div class="modal image-modal" id="imageModal">
+            <button class="modal-close" id="imageModalClose">&times;</button>
+            <div class="modal-content" id="imageModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 登录/注册弹窗 -->
+    <div class="modal-overlay" id="authModalOverlay">
+        <div class="modal auth-modal" id="authModal">
+            <button class="modal-close" id="authModalClose" onclick="window.__app.closeAuthModal()">&times;</button>
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login" onclick="window.__app.switchAuthTab('login')">登录</div>
+                <div class="auth-tab" data-tab="register" onclick="window.__app.switchAuthTab('register')">注册</div>
+            </div>
+            <div class="modal-content" id="authModalContent">
+                <!-- 登录表单 -->
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="loginUsername" placeholder="请输入用户名" autocomplete="username" />
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="loginPassword" placeholder="请输入密码" autocomplete="current-password" />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block">登录</button>
+                    <p class="auth-hint">还没有账号？<a href="javascript:void(0)" onclick="window.__app.switchAuthTab('register')">立即注册</a></p>
+                </form>
+                <!-- 注册表单 -->
+                <form id="registerForm" class="auth-form" style="display:none">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="registerUsername" placeholder="3-20位字符" autocomplete="username" />
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="registerPassword" placeholder="至少6位" autocomplete="new-password" />
+                    </div>
+                    <div class="form-group">
+                        <label>确认密码</label>
+                        <input type="password" id="registerPassword2" placeholder="再次输入密码" autocomplete="new-password" />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block">注册并登录</button>
+                    <p class="auth-hint">已有账号？<a href="javascript:void(0)" onclick="window.__app.switchAuthTab('login')">去登录</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 同步状态提示 -->
+    <div class="sync-status" id="syncStatus">
+        <span class="sync-icon">⟳</span>
+        <span class="sync-text">同步中...</span>
+    </div>
+
+    <script src="js/data/vocabulary.js"></script>
+    <script src="js/data/vocabulary2.js"></script>
+    <script src="js/data/vocabulary3.js"></script>
+    <script src="js/data/vocabulary4.js"></script>
+    <script src="js/data/vocabulary5.js"></script>
+    <script src="js/data/grammar.js"></script>
+    <script src="js/data/writing.js"></script>
+    <script src="js/data/reading.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+    // ===== PWA Service Worker 注册 =====
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('sw.js').then(function(registration) {
+                console.log('PWA: ServiceWorker 注册成功', registration.scope);
+            }).catch(function(err) {
+                console.warn('PWA: ServiceWorker 注册失败', err);
+            });
+        });
+        
+        // PWA 安装提示
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            // 显示安装提示
+            if (window.__app && window.__app.showInstallPrompt) {
+                window.__app.showInstallPrompt();
+            }
+        });
+        
+        // 监听安装完成
+        window.addEventListener('appinstalled', function() {
+            console.log('PWA: 应用已安装');
+            deferredPrompt = null;
+        });
+    }
+    </script>
+</body>
+</html>
