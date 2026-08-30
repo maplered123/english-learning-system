@@ -1,11 +1,25 @@
 # 依赖
 node_modules/
 
-# 数据文件（包含用户隐私，不上传）
-data/
+# 数据库文件（包含用户隐私，不上传）
 *.db
 *.sqlite
 *.sqlite3
+
+# 后端服务文件（纯前端部署不需要）
+server/
+server.js
+server.js.bak
+package.json
+package-lock.json
+
+# 教程和临时文件
+Vercel部署教程.html
+部署教程.md
+使用说明.md
+.trae-html-share-packages/
+render部署教程/
+部署教程图片/
 
 # 日志
 logs/
