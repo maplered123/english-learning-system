@@ -345,33 +345,57 @@ const Utils = {
   speak(text) {
     const word = text.trim();
     const isShort = word.split(/\s+/).length <= 3;
-
-    let audioEl = document.getElementById('tts-audio');
-    if (!audioEl) {
-      audioEl = document.createElement('audio');
-      audioEl.id = 'tts-audio';
-      audioEl.preload = 'auto';
-      audioEl.style.display = 'none';
-      document.body.appendChild(audioEl);
-    }
-
     if (isShort) {
-      // 同步设置 src + play，保持用户手势上下文
-      audioEl.src = '/api/tts?word=' + encodeURIComponent(word) + '&type=2';
-      audioEl.load();
-      audioEl.play().catch(() => {
-        // 同源失败，尝试直接有道
-        audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
-        audioEl.load();
-        audioEl.play().catch(() => {
-          audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=1';
-          audioEl.load();
-          audioEl.play().catch(() => this._speakFallback(word));
-        });
-      });
+      this._playTTS(word);
     } else {
       this._speakFallback(word);
     }
+  },
+  async _playTTS(word) {
+    // 1. Web Audio API（移动端最兼容）
+    try {
+      if (!this._audioCtx) {
+        this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (this._audioCtx.state === 'suspended') {
+        await this._audioCtx.resume();
+      }
+      const resp = await fetch('/api/tts?word=' + encodeURIComponent(word) + '&type=2');
+      if (resp.ok) {
+        const buf = await resp.arrayBuffer();
+        const audioBuffer = await this._audioCtx.decodeAudioData(buf);
+        const src = this._audioCtx.createBufferSource();
+        src.buffer = audioBuffer;
+        src.connect(this._audioCtx.destination);
+        src.start(0);
+        return;
+      }
+    } catch (e) { /* fall to next */ }
+    // 2. audio 元素直接播放
+    try {
+      let audioEl = document.getElementById('tts-audio');
+      if (!audioEl) {
+        audioEl = document.createElement('audio');
+        audioEl.id = 'tts-audio';
+        audioEl.preload = 'auto';
+        audioEl.style.display = 'none';
+        document.body.appendChild(audioEl);
+      }
+      audioEl.src = '/api/tts?word=' + encodeURIComponent(word) + '&type=2';
+      audioEl.load();
+      await audioEl.play();
+      return;
+    } catch (e) { /* fall to next */ }
+    // 3. 直接有道 URL
+    try {
+      let audioEl = document.getElementById('tts-audio');
+      audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
+      audioEl.load();
+      await audioEl.play();
+      return;
+    } catch (e) { /* fall to next */ }
+    // 4. 最终后备
+    this._speakFallback(word);
   },
   _speakFallback(text) {
     if ('speechSynthesis' in window && this._voicesLoaded) {
