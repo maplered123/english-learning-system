@@ -616,6 +616,7 @@ const Modules = {
       html += '<input type="text" class="practice-input" id="practiceInput" placeholder="输入中文释义..." autocomplete="off" />';
       html += '<div class="practice-actions">';
       html += '<button class="btn btn-primary" onclick="window.__app.submitAnswer(\'' + module + '\')">提交答案</button>';
+      html += '<button class="btn btn-outline" onclick="window.__app.showHint(\'vocab\')">提示</button>';
       html += '<button class="btn btn-outline" onclick="window.__app.skipQuestion(\'' + module + '\')">跳过</button>';
       html += '</div>';
       html += '<div class="practice-feedback" id="practiceFeedback"></div>';
@@ -627,6 +628,7 @@ const Modules = {
       html += '<input type="text" class="practice-input" id="practiceInput" placeholder="填入正确答案..." autocomplete="off" />';
       html += '<div class="practice-actions">';
       html += '<button class="btn btn-primary" onclick="window.__app.submitAnswer(\'' + module + '\')">提交</button>';
+      html += '<button class="btn btn-outline" onclick="window.__app.showHint(\'blank\')">提示</button>';
       html += '<button class="btn btn-outline" onclick="window.__app.skipQuestion(\'' + module + '\')">跳过</button>';
       html += '</div>';
       html += '<div class="practice-feedback" id="practiceFeedback"></div>';
@@ -648,6 +650,9 @@ const Modules = {
         html += '<span class="option-text">' + Utils.esc(opt) + '</span>';
         html += '</div>';
       });
+      html += '</div>';
+      html += '<div class="practice-actions">';
+      html += '<button class="btn btn-outline" onclick="window.__app.showHint(\'choice\')">提示</button>';
       html += '</div>';
       html += '<div class="practice-feedback" id="practiceFeedback"></div>';
       html += '</div>';
@@ -891,6 +896,7 @@ const Modules = {
     html += '<input type="text" class="practice-input" id="practiceInput" placeholder="填入英文..." autocomplete="off" />';
     html += '<div class="practice-actions">';
     html += '<button class="btn btn-primary" onclick="window.__app.submitWritingAnswer()">提交</button>';
+    html += '<button class="btn btn-outline" onclick="window.__app.showHint(\'writing\')">提示</button>';
     html += '<button class="btn btn-outline" onclick="window.__app.skipWritingQuestion()">跳过</button>';
     html += '</div>';
     html += '<div class="practice-feedback" id="practiceFeedback"></div>';
@@ -1076,6 +1082,7 @@ const Modules = {
 
     html += '<div class="practice-actions">';
     html += '<button class="btn btn-primary" onclick="window.__app.submitTransBlank()">提交</button>';
+    html += '<button class="btn btn-outline" onclick="window.__app.showHint(\'trans-blank\')">提示</button>';
     html += '<button class="btn btn-outline" onclick="window.__app.skipTransBlank()">跳过</button>';
     html += '</div>';
     html += '<div class="practice-feedback" id="practiceFeedback"></div>';
@@ -1119,6 +1126,7 @@ const Modules = {
     html += '<textarea class="practice-input trans-textarea" id="practiceInput" placeholder="输入英文翻译..." rows="3"></textarea>';
     html += '<div class="practice-actions">';
     html += '<button class="btn btn-primary" onclick="window.__app.submitTransInput()">提交</button>';
+    html += '<button class="btn btn-outline" onclick="window.__app.showHint(\'trans-input\')">提示</button>';
     html += '<button class="btn btn-outline" onclick="window.__app.skipTransInput()">跳过</button>';
     html += '</div>';
     html += '<div class="practice-feedback" id="practiceFeedback"></div>';
@@ -1441,6 +1449,37 @@ window.__app = {
       else if (module.includes('grammar')) title = '语法练习';
       Modules._renderPracticeQuestion(module, title);
     }, 1500);
+  },
+
+  showHint(type) {
+    const fb = Utils.$('practiceFeedback');
+    if (!fb) return;
+    if (type === 'choice') {
+      const q = State.practiceQuestions[State.practiceIndex];
+      const correctIdx = q.answer !== undefined ? q.answer : q.correctIdx;
+      const opts = Utils.$$$('.practice-option');
+      Array.from(opts).forEach((opt, i) => {
+        if (i === correctIdx) opt.classList.add('correct-highlight');
+      });
+      fb.innerHTML = '<div class="feedback-hint">💡 正确答案: ' + String.fromCharCode(65 + correctIdx) + '. ' + Utils.esc(q.options[correctIdx]) + '</div>';
+    } else if (type === 'vocab') {
+      const q = State.practiceQuestions[State.practiceIndex];
+      fb.innerHTML = '<div class="feedback-hint">💡 释义: ' + Utils.esc(q.meaning) + '</div>';
+    } else if (type === 'blank') {
+      const q = State.practiceQuestions[State.practiceIndex];
+      fb.innerHTML = '<div class="feedback-hint">💡 答案: ' + Utils.esc(q.answer !== undefined ? q.answer : (q.options ? q.options[q.answer] : '')) + '</div>';
+    } else if (type === 'writing') {
+      const q = State.practiceQuestions[State.practiceIndex];
+      fb.innerHTML = '<div class="feedback-hint">💡 答案: ' + Utils.esc(q.answer) + '</div>';
+    } else if (type === 'trans-blank' || type === 'trans-input') {
+      const t = State.practiceQuestions[State.practiceIndex];
+      let html = '<div class="feedback-hint">💡 正确翻译: ' + Utils.esc(t.en) + '</div>';
+      if (t.keyVocab && t.keyVocab.length) html += this._formatKeyVocab(t.keyVocab);
+      fb.innerHTML = html;
+    } else if (type === 'wrong') {
+      const q = State.practiceQuestions[State.practiceIndex];
+      fb.innerHTML = '<div class="feedback-hint">💡 正确答案: ' + Utils.esc(q.correctAnswer) + '</div>';
+    }
   },
 
   skipQuestion(module) {
@@ -1847,7 +1886,7 @@ Modules._renderWrongPractice = function() {
   html += '<div class="practice-instruction">' + Utils.esc(q.instruction) + '</div>';
   html += '<div class="practice-sentence">' + Utils.esc(q.sentence) + '</div>';
   html += '<input type="text" class="practice-input" id="practiceInput" placeholder="输入正确答案..." autocomplete="off" />';
-  html += '<div class="practice-actions"><button class="btn btn-primary" onclick="window.__app.submitWrongAnswer()">提交</button><button class="btn btn-outline" onclick="window.__app.skipWrong()">跳过</button></div>';
+  html += '<div class="practice-actions"><button class="btn btn-primary" onclick="window.__app.submitWrongAnswer()">提交</button><button class="btn btn-outline" onclick="window.__app.showHint(\'wrong\')">提示</button><button class="btn btn-outline" onclick="window.__app.skipWrong()">跳过</button></div>';
   html += '<div class="practice-feedback" id="practiceFeedback"></div>';
   html += '</div></div>';
   Utils.$('mainContent').innerHTML = html;

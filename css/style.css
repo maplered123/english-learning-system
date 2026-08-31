@@ -1748,6 +1748,18 @@ body {
     border-radius: var(--radius-sm);
     font-weight: 600;
 }
+.feedback-hints {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+    color: #ffc107;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+.correct-highlight {
+    background: rgba(40, 167, 69, 0.2) !important;
+    border-color: var(--success) !important;
+}
 .practice-options {
     display: flex;
     flex-direction: column;
