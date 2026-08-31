@@ -1201,6 +1201,10 @@ const Modules = {
       card.addEventListener('click', () => {
         State._wbChapter = parseInt(card.dataset.chapter);
         Modules.wrongBook();
+        setTimeout(() => {
+          const detail = Utils.$('mainContent').querySelector('.wrong-chapter-detail');
+          if (detail) detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       });
     });
   },
