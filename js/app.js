@@ -1238,13 +1238,14 @@ const Modules = {
     // 快速入口
     html += '<div class="dashboard-section"><h3>快速入口</h3><div class="quick-links">';
     html += '<a class="quick-link" onclick="window.__app.nav(\'vocab-learn\')">📖 词汇学习</a>';
-    html += '<a class="quick-link" onclick="window.__app.nav(\'vocab-practice\')">✏️ 词汇练习</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'vocab-practice\')">✏️ 词汇翻译练习</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'vocab-practice-choice\')">🔘 词汇选择题</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'grammar-learn\')">📐 语法学习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'grammar-practice\')">📝 语法练习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'writing-learn\')">✒️ 应用文学习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'writing-practice\')">📋 应用文练习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'reading-learn\')">🔍 阅读文库</a>';
-    html += '<a class="quick-link" onclick="window.__app.nav(\'trans-blank\')">🔤 选词翻译</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'trans-blank\')">🧩 选词翻译</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'trans-input\')">✍️ 手动翻译</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'wrong-book\')">❌ 错题本</a>';
     html += '</div></div>';
