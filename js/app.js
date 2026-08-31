@@ -2922,16 +2922,13 @@ window.__app.logout = function() {
 
 window.__app.updateUserUI = function() {
   const user = LocalAuth.getCurrentUser();
-  const nameEl = Utils.$('userName');
-  const btnEl = Utils.$('loginBtn');
+  const acctEl = Utils.$('sidebarAccount');
+  if (!acctEl) return;
   if (user) {
-    nameEl.textContent = '👤 ' + user.username;
-    btnEl.textContent = '退出';
-    btnEl.onclick = () => window.__app.logout();
+    acctEl.innerHTML = '<div class="account-name">👤 ' + Utils.esc(user.username) + '</div>' +
+      '<button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="window.__app.logout()">退出登录</button>';
   } else {
-    nameEl.textContent = '未登录';
-    btnEl.textContent = '登录';
-    btnEl.onclick = () => window.__app.showLogin();
+    acctEl.innerHTML = '<button class="btn btn-primary btn-block" id="sidebarLoginBtn" onclick="window.__app.showLogin()">👤 登录 / 注册</button>';
   }
 };
 

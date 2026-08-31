@@ -212,6 +212,27 @@ body {
     text-align: center;
 }
 
+/* 账户区 */
+.account-section {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 5px;
+}
+
+.account-info {
+    padding: 8px 16px;
+}
+
+.account-name {
+    padding: 10px 14px;
+    background: var(--primary-light);
+    border-radius: var(--radius-sm);
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+}
+
 /* ===== 主内容区 ===== */
 .content {
     flex: 1;
