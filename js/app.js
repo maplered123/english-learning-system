@@ -302,6 +302,28 @@ const Utils = {
     const w = encodeURIComponent(word.toLowerCase());
     return 'https://loremflickr.com/400/240/' + w + '?lock=' + (word.length * 7 + word.charCodeAt(0));
   },
+
+  async loadWordImages(container) {
+    const cards = Array.from((container || document).querySelectorAll('.word-card'));
+    for (const card of cards) {
+      const word = card.dataset.word || '';
+      const img = card.querySelector('.word-image-preview img');
+      if (!img) continue;
+      try {
+        const resp = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(word));
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.thumbnail && data.thumbnail.source) {
+            img.src = data.thumbnail.source;
+            img.alt = word;
+            continue;
+          }
+        }
+      } catch(e) {}
+      img.src = Utils.getImageUrl(word, '');
+      img.onerror = function() { this.parentElement.innerHTML = '<div class="img-placeholder">📷 暂无图片</div>'; };
+    }
+  },
   speak(text) {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -457,7 +479,7 @@ const Modules = {
       html += '<div class="ex-cn">' + Utils.esc(exCn) + '</div>';
       html += '</div>';
       html += '<div class="word-image-preview">';
-      html += '<img src="' + imgUrl + '" alt="' + Utils.esc(word) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=\\\"img-placeholder\\\">📷 图片加载中...</div>\'" />';
+      html += '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'240\'%3E%3Crect fill=\'%232a2a2a\' width=\'400\' height=\'240\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23888\' font-size=\'14\' text-anchor=\'middle\' dy=\'.3em\'%3E📷 加载中...%3C/text%3E%3C/svg%3E" alt="' + Utils.esc(word) + '" loading="lazy" />';
       html += '</div>';
       html += '</div>';
     });
@@ -471,6 +493,7 @@ const Modules = {
     Utils.$('mainContent').innerHTML = html;
     Storage.setChapterProgress('vocab-learn', chId, { studied: true });
     Nav.updateProgress();
+    Utils.loadWordImages();
   },
 
   // --- 词汇练习 ---
