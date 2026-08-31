@@ -1017,11 +1017,13 @@ const Modules = {
     }
     const t = State.practiceQuestions[State.practiceIndex];
     const enWords = t.en.split(/\s+/);
-    const blankSet = new Set(t.blanks.map(b => b.toLowerCase()));
-    const correctSlots = enWords.map(w => blankSet.has(w.toLowerCase().replace(/[^a-zA-Z']/g, '')));
+    const cleanWord = (w) => w.replace(/[^a-zA-Z']/g, '').toLowerCase();
+    const blankSet = new Set(t.blanks.map(b => cleanWord(b)));
+    const correctSlots = enWords.map(w => blankSet.has(cleanWord(w)));
 
-    const wordBank = Utils.shuffle([...t.blanks, ...t.distractors]);
-    const usedWords = new Set();
+    const actualBlanks = enWords.filter((w, i) => correctSlots[i]).map(w => cleanWord(w));
+    const limitedDistractors = Utils.shuffle(t.distractors).slice(0, Math.max(2, 5 - actualBlanks.length));
+    const wordBank = Utils.shuffle([...actualBlanks, ...limitedDistractors]);
 
     let html = '<div class="module-header">';
     html += '<button class="btn btn-sm btn-outline" onclick="window.__app.backPractice(\'trans-blank\')">← 返回</button>';
@@ -1034,9 +1036,8 @@ const Modules = {
 
     html += '<div class="trans-blank-sentence" id="transSentence">';
     enWords.forEach((w, i) => {
-      const cleanW = w.toLowerCase().replace(/[^a-zA-Z']/g, '');
       if (correctSlots[i]) {
-        html += '<span class="trans-blank-slot" data-correct="' + Utils.esc(w) + '" data-filled="" onclick="window.__app._unselectTransWord(this)"></span>';
+        html += '<span class="trans-blank-slot" data-correct="' + Utils.esc(cleanWord(w)) + '" data-filled="" onclick="window.__app._unselectTransWord(this)"></span>';
       } else {
         html += '<span class="trans-fixed-word">' + Utils.esc(w) + '</span>';
       }
@@ -1472,9 +1473,9 @@ window.__app = {
     let allCorrect = true;
     const userAnswer = [];
     slots.forEach(s => {
-      const filled = s.dataset.filled;
-      const correct = s.dataset.correct;
-      userAnswer.push(filled || '(空)');
+      const filled = (s.dataset.filled || '').toLowerCase().trim();
+      const correct = (s.dataset.correct || '').toLowerCase().trim();
+      userAnswer.push(s.dataset.filled || '(空)');
       if (!filled) allFilled = false;
       if (filled !== correct) allCorrect = false;
     });
@@ -1561,37 +1562,6 @@ window.__app = {
     });
     State.practiceIndex++;
    Modules._renderTransInputQuestion();
-  },
-
-  // --- 翻译判定与格式化工具 ---
-  _checkTranslation(userAns, correctEn) {
-    const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-    const userNorm = normalize(userAns);
-    const correctNorm = normalize(correctEn);
-    const userWords = userNorm.split(' ').filter(w => w.length > 0);
-    const correctWords = correctNorm.split(' ').filter(w => w.length > 0);
-
-    if (userNorm === correctNorm) return true;
-
-    const correctSet = new Set(correctWords);
-    let matched = 0;
-    userWords.forEach(w => { if (correctSet.has(w)) matched++; });
-
-    const coverage = matched / correctWords.length;
-    const reverseCoverage = correctWords.filter(w => userWords.includes(w)).length / correctWords.length;
-
-    return coverage >= 0.7 && reverseCoverage >= 0.6;
-  },
-
-  _formatKeyVocab(keyVocab) {
-    if (!keyVocab || !keyVocab.length) return '';
-    let html = '<div class="key-vocab-list">';
-    keyVocab.forEach(kv => {
-      const tag = kv.above ? '<span class="vocab-tag above">超纲</span>' : '<span class="vocab-tag">重点</span>';
-      html += '<div class="key-vocab-item">' + tag + ' <b>' + Utils.esc(kv.word) + '</b> — ' + Utils.esc(kv.meaning) + '</div>';
-    });
-    html += '</div>';
-    return html;
   },
 
   // --- 翻译判定与格式化工具 ---
