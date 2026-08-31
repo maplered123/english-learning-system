@@ -326,36 +326,59 @@ const Utils = {
   },
   _voicesLoaded: false,
   _enVoice: null,
+  _audioCtx: null,
   initVoices() {
-    if (!('speechSynthesis' in window)) return;
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      this._enVoice = voices.find(v => v.lang.startsWith('en') && /Google|Female|Male/i.test(v.name)) 
-                   || voices.find(v => v.lang.startsWith('en'))
-                   || null;
-      this._voicesLoaded = voices.length > 0;
-    };
-    loadVoices();
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+    if ('speechSynthesis' in window) {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        this._enVoice = voices.find(v => v.lang.startsWith('en') && /Google|Female|Male/i.test(v.name))
+                     || voices.find(v => v.lang.startsWith('en'))
+                     || null;
+        this._voicesLoaded = voices.length > 0;
+      };
+      loadVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
     }
   },
   speak(text) {
-    if (!('speechSynthesis' in window)) {
-      Utils.toast('浏览器不支持语音播放', 'warning');
+    const word = text.trim();
+    const isShort = word.split(/\s+/).length <= 3;
+
+    // 1. 单词/短语用有道词典发音（真人录音，兼容所有浏览器）
+    if (isShort) {
+      const audio = new Audio('https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2');
+      audio.crossOrigin = 'anonymous';
+      audio.play().then(() => { return; }).catch(() => {
+        // 有道失败则尝试 speechSynthesis
+        this._speakFallback(word);
+      });
       return;
     }
-    window.speechSynthesis.cancel();
-    setTimeout(() => {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US';
-      u.rate = 0.8;
-      u.pitch = 1;
-      u.volume = 1;
-      if (this._enVoice) u.voice = this._enVoice;
-      u.onerror = (e) => console.warn('TTS error:', e);
-      window.speechSynthesis.speak(u);
-    }, 100);
+
+    // 2. 长句子用 speechSynthesis
+    this._speakFallback(word);
+  },
+  _speakFallback(text) {
+    if ('speechSynthesis' in window && this._voicesLoaded) {
+      window.speechSynthesis.cancel();
+      setTimeout(() => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US'; u.rate = 0.8; u.pitch = 1; u.volume = 1;
+        if (this._enVoice) u.voice = this._enVoice;
+        u.onerror = () => this._speakAudioApi(text);
+        window.speechSynthesis.speak(u);
+      }, 100);
+    } else {
+      this._speakAudioApi(text);
+    }
+  },
+  _speakAudioApi(text) {
+    const audio = new Audio('https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(text));
+    audio.play().catch(() => {
+      Utils.toast('语音播放失败，请检查网络', 'warning');
+    });
   }
 };
 
