@@ -324,13 +324,38 @@ const Utils = {
       img.onerror = function() { this.parentElement.innerHTML = '<div class="img-placeholder">📷 暂无图片</div>'; };
     }
   },
-  speak(text) {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US'; u.rate = 0.8;
-      window.speechSynthesis.speak(u);
+  _voicesLoaded: false,
+  _enVoice: null,
+  initVoices() {
+    if (!('speechSynthesis' in window)) return;
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      this._enVoice = voices.find(v => v.lang.startsWith('en') && /Google|Female|Male/i.test(v.name)) 
+                   || voices.find(v => v.lang.startsWith('en'))
+                   || null;
+      this._voicesLoaded = voices.length > 0;
+    };
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
     }
+  },
+  speak(text) {
+    if (!('speechSynthesis' in window)) {
+      Utils.toast('浏览器不支持语音播放', 'warning');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.8;
+      u.pitch = 1;
+      u.volume = 1;
+      if (this._enVoice) u.voice = this._enVoice;
+      u.onerror = (e) => console.warn('TTS error:', e);
+      window.speechSynthesis.speak(u);
+    }, 100);
   }
 };
 
@@ -1292,10 +1317,11 @@ const Modules = {
 // ===== 全局API（供HTML onclick调用） =====
 window.__app = {
   init() { 
-    Nav.init(); 
-    Nav.goTo('dashboard'); 
+    Nav.init();
+    Nav.goTo('dashboard');
     this.updateUserUI();
     this._setupAuthForms();
+    Utils.initVoices();
     // 已登录且在线则自动同步
     if (API.isOnline() && LocalAuth.isLoggedIn()) {
       setTimeout(() => SyncManager.syncAll(), 1000);
