@@ -346,18 +346,27 @@ const Utils = {
     const word = text.trim();
     const isShort = word.split(/\s+/).length <= 3;
 
-    // 1. 单词/短语用有道词典发音（真人录音，兼容所有浏览器）
+    // 获取或创建持久化 audio 元素
+    let audioEl = document.getElementById('tts-audio');
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = 'tts-audio';
+      audioEl.style.display = 'none';
+      document.body.appendChild(audioEl);
+    }
+
+    // 1. 单词/短语用有道词典发音
     if (isShort) {
-      const audio = new Audio('https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2');
-      audio.crossOrigin = 'anonymous';
-      audio.play().then(() => { return; }).catch(() => {
-        // 有道失败则尝试 speechSynthesis
-        this._speakFallback(word);
+      audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
+      audioEl.play().then(() => { return; }).catch(() => {
+        // 有道失败，尝试备用
+        audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=1';
+        audioEl.play().catch(() => this._speakFallback(word));
       });
       return;
     }
 
-    // 2. 长句子用 speechSynthesis
+    // 2. 长句子用 speechSynthesis 或 TTS API
     this._speakFallback(word);
   },
   _speakFallback(text) {
