@@ -1445,7 +1445,7 @@ window.__app = {
   selectTransWord(btn) {
     if (btn.classList.contains('used')) return;
     const word = btn.dataset.word;
-    const slots = Utils.$$$('.trans-blank-slot');
+    const slots = Array.from(Utils.$$$('.trans-blank-slot'));
     const emptySlot = slots.find(s => !s.dataset.filled);
     if (emptySlot) {
       emptySlot.dataset.filled = word;
