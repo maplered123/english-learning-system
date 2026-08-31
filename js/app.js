@@ -352,22 +352,25 @@ const Utils = {
     }
   },
   async _playAudioWord(word) {
-    const youdaoUrl = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
-    const proxies = [
-      'https://corsproxy.io/?url=',
-      'https://api.allorigins.win/raw?url='
-    ];
-    for (const proxy of proxies) {
-      try {
-        const resp = await fetch(proxy + encodeURIComponent(youdaoUrl));
-        if (resp.ok) {
-          const blob = await resp.blob();
-          await this._playBlob(blob);
-          return;
-        }
-      } catch (e) { /* try next */ }
-    }
-    // 直接尝试 StreamElements TTS
+    // 1. 同源 Cloudflare Function 代理（解决所有 CORS 问题）
+    try {
+      const resp = await fetch('/api/tts?word=' + encodeURIComponent(word) + '&type=2');
+      if (resp.ok) {
+        const blob = await resp.blob();
+        await this._playBlob(blob);
+        return;
+      }
+    } catch (e) { /* try next */ }
+    // 2. 尝试美音
+    try {
+      const resp = await fetch('/api/tts?word=' + encodeURIComponent(word) + '&type=1');
+      if (resp.ok) {
+        const blob = await resp.blob();
+        await this._playBlob(blob);
+        return;
+      }
+    } catch (e) { /* try next */ }
+    // 3. StreamElements TTS 备用
     try {
       const seUrl = 'https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(word);
       const resp = await fetch(seUrl);
@@ -377,7 +380,7 @@ const Utils = {
         return;
       }
     } catch (e) { /* fallback */ }
-    // 最后尝试 speechSynthesis
+    // 4. 最终后备：浏览器 TTS
     this._speakFallback(word);
   },
   async _playBlob(blob) {
