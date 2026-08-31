@@ -12,9 +12,9 @@ const VOCAB_DATA = [].concat(
   typeof VOCAB_PART4 !== 'undefined' ? VOCAB_PART4 : [],
   typeof VOCAB_PART5 !== 'undefined' ? VOCAB_PART5 : []
 );
-const G_DATA = typeof G_DATA !== 'undefined' ? G_DATA : { chapters: [] };
-const W_DATA = typeof W_DATA !== 'undefined' ? W_DATA : { chapters: [] };
-const R_DATA = typeof R_DATA !== 'undefined' ? R_DATA : { articles: [] };
+const G_DATA = typeof GRAMMAR_DATA !== 'undefined' ? GRAMMAR_DATA : { chapters: [] };
+const W_DATA = typeof WRITING_DATA !== 'undefined' ? WRITING_DATA : { chapters: [] };
+const R_DATA = typeof READING_DATA !== 'undefined' ? READING_DATA : { articles: [] };
 
 // ===== API 配置 =====
 const API = {
