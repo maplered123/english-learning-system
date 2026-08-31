@@ -1,41 +1,42 @@
 /* ===== 全局变量与重置 ===== */
 :root {
-    --primary: #5b7a8c;
-    --primary-dark: #4a6575;
-    --primary-light: #2a3a44;
-    --secondary: #c4956a;
-    --success: #6b9e6b;
-    --danger: #b06b6b;
-    --warning: #c4a96a;
-    --info: #6b8e9b;
+    --primary: #7ba0c4;
+    --primary-dark: #5b8aaa;
+    --primary-light: #2a3a48;
+    --secondary: #d4a574;
+    --success: #7fb87f;
+    --danger: #c47878;
+    --warning: #d4b674;
+    --info: #7ba0b4;
     --dark: #1a1a1a;
-    --light: #2a2a2a;
-    --gray: #8a8a8a;
-    --gray-light: #333333;
-    --border: #3a3a3a;
-    --bg: #1e1e1e;
-    --card-bg: #2a2a2a;
-    --text: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --shadow: 0 2px 8px rgba(0,0,0,0.3);
-    --shadow-hover: 0 4px 16px rgba(0,0,0,0.4);
+    --light: #2e2e2e;
+    --gray: #999999;
+    --gray-light: #383838;
+    --border: #404040;
+    --bg: #1a1a2e;
+    --card-bg: #252538;
+    --card-bg-hover: #2d2d44;
+    --text: #e8e8f0;
+    --text-secondary: #b0b0c0;
+    --shadow: 0 2px 10px rgba(0,0,0,0.35);
+    --shadow-hover: 0 6px 20px rgba(0,0,0,0.45);
     --radius: 12px;
     --radius-sm: 8px;
     --sidebar-width: 240px;
     --header-height: 60px;
     --transition: all 0.3s ease;
-    --vocab-color: #6b8e9b;
-    --vocab-bg: #1e2a30;
-    --grammar-color: #9b8baf;
-    --grammar-bg: #251f2e;
-    --writing-color: #b0896a;
-    --writing-bg: #2a231a;
-    --reading-color: #7ba17b;
-    --reading-bg: #1e2a20;
-    --trans-color: #a08fa0;
-    --trans-bg: #2a1f2a;
-    --tool-color: #8a8a8a;
-    --tool-bg: #2a2a2a;
+    --vocab-color: #7bafcc;
+    --vocab-bg: #1e2a35;
+    --grammar-color: #b09bc4;
+    --grammar-bg: #251f30;
+    --writing-color: #c49a78;
+    --writing-bg: #2a231c;
+    --reading-color: #88c488;
+    --reading-bg: #1e2a22;
+    --trans-color: #b09bc0;
+    --trans-bg: #2a1f2e;
+    --tool-color: #9a9ab0;
+    --tool-bg: #2a2a35;
 }
 
 * {
@@ -236,7 +237,7 @@ body {
     font-size: 24px;
     font-weight: 700;
     margin-bottom: 20px;
-    color: var(--dark);
+    color: var(--text);
 }
 
 .section-card {
@@ -293,7 +294,7 @@ body {
 
 .btn-warning {
     background: var(--warning);
-    color: var(--dark);
+    color: var(--text);
 }
 
 .btn-sm {
@@ -357,7 +358,7 @@ body {
 .chapter-title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 8px;
 }
 
@@ -446,7 +447,7 @@ body {
 .vocab-word {
     font-size: 20px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -532,7 +533,7 @@ body {
 
 .question-text {
     font-size: 18px;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 20px;
     line-height: 1.8;
 }
@@ -556,6 +557,8 @@ body {
     font-size: 16px;
     transition: var(--transition);
     outline: none;
+    background: var(--light);
+    color: var(--text);
 }
 
 .answer-input:focus {
@@ -711,7 +714,7 @@ body {
 .grammar-title {
     font-size: 22px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 16px;
     padding-bottom: 12px;
     border-bottom: 2px solid var(--primary);
@@ -807,7 +810,7 @@ body {
 }
 
 .golden-sentence {
-    background: linear-gradient(135deg, #fff9e6 0%, #fff3d4 100%);
+    background: linear-gradient(135deg, #2a251a 0%, #332d20 100%);
     border-left: 4px solid var(--secondary);
     padding: 16px;
     margin: 10px 0;
@@ -824,13 +827,13 @@ body {
 .golden-sentence .gs-english {
     font-size: 15px;
     font-weight: 600;
-    color: var(--dark);
+    color: #e8d8b8;
     margin-bottom: 6px;
 }
 
 .golden-sentence .gs-chinese {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: #b8a878;
 }
 
 .golden-sentence .gs-tag {
@@ -877,6 +880,8 @@ body {
     font-size: 15px;
     outline: none;
     transition: var(--transition);
+    background: var(--light);
+    color: var(--text);
 }
 
 .reading-search-input:focus {
@@ -894,7 +899,7 @@ body {
 
 .reading-article h3 {
     font-size: 20px;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 8px;
 }
 
@@ -1028,7 +1033,7 @@ body {
 
 .wrong-question-item .wq-question {
     font-size: 15px;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 8px;
 }
 
@@ -1078,7 +1083,7 @@ body {
 .dashboard-card .dc-title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 8px;
 }
 
@@ -1185,11 +1190,11 @@ body {
 
 .modal-close:hover {
     background: var(--gray-light);
-    color: var(--dark);
+    color: var(--text);
 }
 
 .modal-content h2 {
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 16px;
 }
 
@@ -1225,7 +1230,7 @@ body {
 
 .toast.success { background: var(--success); }
 .toast.error { background: var(--danger); }
-.toast.warning { background: var(--warning); color: var(--dark); }
+.toast.warning { background: var(--warning); color: var(--text); }
 .toast.info { background: var(--info); }
 
 /* ===== 章节选择器 ===== */
@@ -1244,7 +1249,8 @@ body {
     font-size: 14px;
     cursor: pointer;
     outline: none;
-    background: white;
+    background: var(--light);
+    color: var(--text);
 }
 
 .chapter-select:focus {
@@ -1299,7 +1305,7 @@ body {
 .toast { opacity: 0; transform: translateX(100%); transition: all 0.3s ease; }
 .toast-success, .toast.toast-success { background: var(--success); }
 .toast-error, .toast.toast-error { background: var(--danger); }
-.toast-warning, .toast.toast-warning { background: var(--warning); color: var(--dark); }
+.toast-warning, .toast.toast-warning { background: var(--warning); color: var(--text); }
 .toast-info, .toast.toast-info { background: var(--info); }
 
 /* 模块头部/底部 */
@@ -1313,7 +1319,7 @@ body {
 .module-header h2 {
     font-size: 22px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     flex: 1;
 }
 .module-footer {
@@ -1376,7 +1382,7 @@ body {
 .badge-success { background: var(--success); color: white; }
 .badge-danger { background: var(--danger); color: white; }
 .badge-info { background: var(--info); color: white; }
-.badge-warning { background: var(--warning); color: var(--dark); }
+.badge-warning { background: var(--warning); color: var(--text); }
 
 /* 词汇学习 */
 .word-list {
@@ -1407,7 +1413,7 @@ body {
 .word-text {
     font-size: 22px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     display: block;
 }
 .word-phonetic {
@@ -1462,7 +1468,7 @@ body {
 }
 .ex-en {
     font-size: 14px;
-    color: var(--dark);
+    color: var(--text);
     font-style: italic;
     margin-bottom: 4px;
 }
@@ -1600,6 +1606,13 @@ body {
     min-height: 80px;
     font-size: 16px;
     resize: vertical;
+    background: var(--light);
+    color: var(--text);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    outline: none;
+    transition: var(--transition);
 }
 .key-vocab-list {
     margin-top: 12px;
@@ -1633,7 +1646,7 @@ body {
 
 /* 图片查看器 */
 .image-viewer h3 {
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 12px;
 }
 .image-viewer img {
@@ -1664,7 +1677,7 @@ body {
 .practice-word {
     font-size: 32px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 8px;
 }
 .practice-phonetic {
@@ -1689,13 +1702,13 @@ body {
 }
 .practice-instruction {
     font-size: 16px;
-    color: var(--dark);
+    color: var(--text);
     font-weight: 600;
     margin-bottom: 12px;
 }
 .practice-sentence {
     font-size: 18px;
-    color: var(--dark);
+    color: var(--text);
     line-height: 1.8;
     margin-bottom: 16px;
     padding: 16px;
@@ -1718,6 +1731,8 @@ body {
     outline: none;
     transition: var(--transition);
     text-align: center;
+    background: var(--light);
+    color: var(--text);
 }
 .practice-input:focus {
     border-color: var(--primary);
@@ -1847,7 +1862,7 @@ body {
 }
 .wrong-q {
     font-size: 15px;
-    color: var(--dark);
+    color: var(--text);
     font-weight: 600;
     margin-bottom: 4px;
 }
@@ -1887,7 +1902,7 @@ body {
     border-bottom: 2px solid var(--primary-light);
 }
 .writing-sentence {
-    background: linear-gradient(135deg, #fff9e6 0%, #fff3d4 100%);
+    background: linear-gradient(135deg, #2a251a 0%, #332d20 100%);
     border-left: 4px solid var(--secondary);
     padding: 16px;
     margin: 10px 0;
@@ -1896,12 +1911,12 @@ body {
 .ws-en {
     font-size: 15px;
     font-weight: 600;
-    color: var(--dark);
+    color: #e8d8b8;
     margin-bottom: 6px;
 }
 .ws-cn {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: #b8a878;
 }
 .writing-section {
     margin-bottom: 24px;
@@ -1921,6 +1936,8 @@ body {
     font-size: 15px;
     outline: none;
     transition: var(--transition);
+    background: var(--light);
+    color: var(--text);
 }
 .search-bar input:focus {
     border-color: var(--primary);
@@ -1969,7 +1986,7 @@ body {
 .article-title {
     font-size: 17px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 4px;
 }
 .article-title-cn {
@@ -2042,7 +2059,7 @@ body {
 }
 .vocab-row .vw {
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
     min-width: 120px;
 }
 .vocab-row .vp {
@@ -2075,7 +2092,7 @@ body {
 }
 .wrong-chapter-detail h3 {
     font-size: 18px;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 16px;
 }
 .wrong-module-section {
@@ -2132,7 +2149,7 @@ body {
 .stat-value {
     font-size: 24px;
     font-weight: 700;
-    color: var(--dark);
+    color: var(--text);
 }
 .stat-label {
     font-size: 13px;
@@ -2147,7 +2164,7 @@ body {
 }
 .dashboard-section h3 {
     font-size: 18px;
-    color: var(--dark);
+    color: var(--text);
     margin-bottom: 16px;
 }
 .module-progress-item {
@@ -2161,7 +2178,7 @@ body {
 }
 .mp-header span:first-child {
     font-weight: 600;
-    color: var(--dark);
+    color: var(--text);
 }
 .mp-header span:last-child {
     color: var(--gray);
@@ -2284,6 +2301,8 @@ body {
     font-size: 15px;
     outline: none;
     transition: var(--transition);
+    background: var(--light);
+    color: var(--text);
 }
 .form-group input:focus {
     border-color: var(--primary);
@@ -2468,10 +2487,10 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    background: white;
+    background: var(--card-bg);
     padding: 12px 16px;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     min-width: 280px;
     max-width: 90vw;
 }
@@ -2489,12 +2508,12 @@ body {
 .pwa-banner-title {
     font-weight: 600;
     font-size: 14px;
-    color: var(--dark);
+    color: var(--text);
 }
 
 .pwa-banner-desc {
     font-size: 12px;
-    color: var(--gray);
+    color: var(--text-secondary);
     margin-top: 2px;
 }
 
@@ -2502,12 +2521,167 @@ body {
     background: none;
     border: none;
     font-size: 20px;
-    color: #ccc;
+    color: var(--gray);
     cursor: pointer;
     padding: 0 4px;
     flex-shrink: 0;
 }
 
 .pwa-banner-close:hover {
-    color: var(--dark);
+    color: var(--text);
+}
+
+/* ===== 视觉优化增强 ===== */
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray);
+}
+
+/* 全局文字渲染优化 */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* 卡片渐变光效 */
+.section-card,
+.chapter-card,
+.word-card,
+.question-card,
+.practice-card,
+.dashboard-card,
+.stat-card,
+.article-card,
+.reading-article,
+.article-vocab,
+.wrong-chapter-detail,
+.dashboard-section,
+.trans-blank-card,
+.trans-input-card,
+.wrong-question-item {
+    background: linear-gradient(145deg, var(--card-bg) 0%, var(--card-bg-hover) 100%);
+}
+
+/* 卡片悬停发光 */
+.chapter-card:hover,
+.word-card:hover,
+.dashboard-card:hover,
+.stat-card:hover,
+.article-card:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(123,160,196,0.15);
+}
+
+/* 输入框聚焦发光 */
+.answer-input:focus,
+.practice-input:focus,
+.search-bar input:focus,
+.reading-search-input:focus,
+.form-group input:focus,
+.trans-textarea:focus {
+    box-shadow: 0 0 0 3px rgba(123,160,196,0.15);
+    border-color: var(--primary);
+}
+
+/* 侧边栏渐变 */
+.sidebar {
+    background: linear-gradient(180deg, var(--card-bg) 0%, var(--bg) 100%);
+}
+
+/* 顶部栏渐变优化 */
+.app-header {
+    background: linear-gradient(135deg, #2a3a48 0%, #1e2a35 100%);
+    border-bottom: 1px solid rgba(123,160,196,0.2);
+}
+
+/* 导航项激活态发光 */
+.nav-item.active {
+    background: linear-gradient(90deg, var(--primary-light) 0%, transparent 100%);
+    box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 选项卡片交互优化 */
+.option-item,
+.practice-option {
+    background: var(--light);
+}
+.option-item:hover,
+.practice-option:hover {
+    background: var(--primary-light);
+}
+.option-item.selected,
+.practice-option.selected {
+    background: var(--primary-light);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+/* 练习按钮优化 */
+.practice-actions .btn,
+.module-footer .btn {
+    min-width: 100px;
+    justify-content: center;
+}
+
+/* 反馈框发光 */
+.feedback-box.correct,
+.feedback-correct {
+    box-shadow: 0 0 12px rgba(127,184,127,0.15);
+}
+.feedback-box.wrong,
+.feedback-wrong {
+    box-shadow: 0 0 12px rgba(196,120,120,0.15);
+}
+.feedback-hints {
+    box-shadow: 0 0 12px rgba(212,182,116,0.15);
+}
+
+/* 模态弹窗优化 */
+.modal {
+    background: linear-gradient(145deg, var(--card-bg) 0%, var(--bg) 100%);
+    border: 1px solid rgba(123,160,196,0.15);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* Toast 优化 */
+.toast {
+    backdrop-filter: blur(10px);
+}
+
+/* 表格行交替色 */
+.grammar-table tr:nth-child(even) {
+    background: var(--light);
+}
+.grammar-table tr:nth-child(odd) {
+    background: var(--card-bg);
+}
+.grammar-table th {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* 进度环发光 */
+.progress-ring .ring-fg {
+    filter: drop-shadow(0 0 4px rgba(123,160,196,0.3));
+}
+
+/* 选择文本颜色 */
+::selection {
+    background: var(--primary);
+    color: #fff;
+}
+::moz-selection {
+    background: var(--primary);
+    color: #fff;
 }
