@@ -299,8 +299,8 @@ const Utils = {
     setTimeout(() => { t.classList.remove('toast-show'); setTimeout(() => t.remove(), 300); }, 3000);
   },
   getImageUrl(word, meaning) {
-    const prompt = encodeURIComponent('A simple, clear educational illustration for the English word "' + word + '" meaning "' + meaning + '", minimalist style, white background, suitable for vocabulary learning');
-    return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' + prompt + '&image_size=square';
+    const w = encodeURIComponent(word.toLowerCase());
+    return 'https://loremflickr.com/400/240/' + w + '?lock=' + (word.length * 7 + word.charCodeAt(0));
   },
   speak(text) {
     if ('speechSynthesis' in window) {
@@ -374,6 +374,8 @@ const Modules = {
       'writing-practice': () => Modules.writingPractice(),
       'reading-learn': () => Modules.readingLearn(),
       'reading-practice': () => Modules.readingPractice(),
+      'trans-blank': () => Modules.transBlank(),
+      'trans-input': () => Modules.transInput(),
       'wrong-book': () => Modules.wrongBook(),
       'dashboard': () => Modules.dashboard()
     };
@@ -455,7 +457,7 @@ const Modules = {
       html += '<div class="ex-cn">' + Utils.esc(exCn) + '</div>';
       html += '</div>';
       html += '<div class="word-image-preview">';
-      html += '<img src="' + imgUrl + '" alt="' + Utils.esc(word) + '" loading="lazy" onerror="this.style.display=\'none\'" />';
+      html += '<img src="' + imgUrl + '" alt="' + Utils.esc(word) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=\\\"img-placeholder\\\">📷 图片加载中...</div>\'" />';
       html += '</div>';
       html += '</div>';
     });
@@ -990,6 +992,119 @@ const Modules = {
     Modules._renderPracticeQuestion('reading-practice', '阅读练习');
   },
 
+  // --- 选词翻译（类似多邻国） ---
+  transBlank() {
+    if (typeof TRANSLATION_DATA === 'undefined' || !TRANSLATION_DATA.length) {
+      Utils.$('mainContent').innerHTML = '<div class="empty-state"><p>翻译数据加载中...</p></div>';
+      return;
+    }
+    if (State.practiceQuestions.length === 0 || State._tbInit !== true) {
+      State._tbInit = true;
+      State.practiceQuestions = Utils.shuffle(TRANSLATION_DATA.map((t, i) => ({ ...t, idx: i })));
+      State.practiceIndex = 0;
+      State.practiceCorrect = 0;
+      State.practiceTotal = State.practiceQuestions.length;
+      State.practiceAnswers = [];
+    }
+    Modules._renderTransBlankQuestion();
+  },
+
+  _renderTransBlankQuestion() {
+    if (State.practiceIndex >= State.practiceTotal) {
+      Modules._renderPracticeResult('trans-blank', '选词翻译');
+      State._tbInit = false;
+      return;
+    }
+    const t = State.practiceQuestions[State.practiceIndex];
+    const enWords = t.en.split(/\s+/);
+    const blankSet = new Set(t.blanks.map(b => b.toLowerCase()));
+    const correctSlots = enWords.map(w => blankSet.has(w.toLowerCase().replace(/[^a-zA-Z']/g, '')));
+
+    const wordBank = Utils.shuffle([...t.blanks, ...t.distractors]);
+    const usedWords = new Set();
+
+    let html = '<div class="module-header">';
+    html += '<button class="btn btn-sm btn-outline" onclick="window.__app.backPractice(\'trans-blank\')">← 返回</button>';
+    html += '<h2>选词翻译 - 第 ' + (State.practiceIndex + 1) + ' / ' + State.practiceTotal + ' 题</h2>';
+    html += '</div>';
+
+    html += '<div class="trans-blank-card">';
+    html += '<div class="trans-cn">' + Utils.esc(t.cn) + '</div>';
+    html += '<div class="trans-hint">请从下方词库中选择正确的单词填入空格</div>';
+
+    html += '<div class="trans-blank-sentence" id="transSentence">';
+    enWords.forEach((w, i) => {
+      const cleanW = w.toLowerCase().replace(/[^a-zA-Z']/g, '');
+      if (correctSlots[i]) {
+        html += '<span class="trans-blank-slot" data-correct="' + Utils.esc(w) + '" data-filled="" onclick="window.__app._unselectTransWord(this)"></span>';
+      } else {
+        html += '<span class="trans-fixed-word">' + Utils.esc(w) + '</span>';
+      }
+      if (i < enWords.length - 1) html += ' ';
+    });
+    html += '</div>';
+
+    html += '<div class="trans-word-bank" id="transWordBank">';
+    wordBank.forEach(w => {
+      html += '<button class="trans-word-chip" data-word="' + Utils.esc(w) + '" onclick="window.__app.selectTransWord(this)">' + Utils.esc(w) + '</button>';
+    });
+    html += '</div>';
+
+    html += '<div class="practice-actions">';
+    html += '<button class="btn btn-primary" onclick="window.__app.submitTransBlank()">提交</button>';
+    html += '<button class="btn btn-outline" onclick="window.__app.skipTransBlank()">跳过</button>';
+    html += '</div>';
+    html += '<div class="practice-feedback" id="practiceFeedback"></div>';
+    html += '</div>';
+
+    Utils.$('mainContent').innerHTML = html;
+  },
+
+  // --- 手动翻译 ---
+  transInput() {
+    if (typeof TRANSLATION_DATA === 'undefined' || !TRANSLATION_DATA.length) {
+      Utils.$('mainContent').innerHTML = '<div class="empty-state"><p>翻译数据加载中...</p></div>';
+      return;
+    }
+    if (State.practiceQuestions.length === 0 || State._tiInit !== true) {
+      State._tiInit = true;
+      State.practiceQuestions = Utils.shuffle(TRANSLATION_DATA.map((t, i) => ({ ...t, idx: i })));
+      State.practiceIndex = 0;
+      State.practiceCorrect = 0;
+      State.practiceTotal = State.practiceQuestions.length;
+      State.practiceAnswers = [];
+    }
+    Modules._renderTransInputQuestion();
+  },
+
+  _renderTransInputQuestion() {
+    if (State.practiceIndex >= State.practiceTotal) {
+      Modules._renderPracticeResult('trans-input', '手动翻译');
+      State._tiInit = false;
+      return;
+    }
+    const t = State.practiceQuestions[State.practiceIndex];
+    let html = '<div class="module-header">';
+    html += '<button class="btn btn-sm btn-outline" onclick="window.__app.backPractice(\'trans-input\')">← 返回</button>';
+    html += '<h2>手动翻译 - 第 ' + (State.practiceIndex + 1) + ' / ' + State.practiceTotal + ' 题</h2>';
+    html += '</div>';
+
+    html += '<div class="trans-input-card">';
+    html += '<div class="trans-cn">' + Utils.esc(t.cn) + '</div>';
+    html += '<div class="trans-hint">请将该句子翻译为英文（近义表达也可）</div>';
+    html += '<textarea class="practice-input trans-textarea" id="practiceInput" placeholder="输入英文翻译..." rows="3"></textarea>';
+    html += '<div class="practice-actions">';
+    html += '<button class="btn btn-primary" onclick="window.__app.submitTransInput()">提交</button>';
+    html += '<button class="btn btn-outline" onclick="window.__app.skipTransInput()">跳过</button>';
+    html += '</div>';
+    html += '<div class="practice-feedback" id="practiceFeedback"></div>';
+    html += '</div>';
+
+    Utils.$('mainContent').innerHTML = html;
+    const input = Utils.$('practiceInput');
+    if (input) input.focus();
+  },
+
   // --- 错题本 ---
   wrongBook() {
     const wb = Storage.getWrongBook();
@@ -1175,7 +1290,13 @@ window.__app = {
 
   nav(module) { Nav.goTo(module); },
   back() { State.showSelector = true; Modules.render(State.currentModule); },
-  backPractice(module) { State.showSelector = true; State.practiceQuestions = []; Modules.render(module); },
+  backPractice(module) {
+    State.showSelector = true;
+    State.practiceQuestions = [];
+    State._tbInit = false;
+    State._tiInit = false;
+    Modules.render(module);
+  },
 
   speak(text) { Utils.speak(text); },
 
@@ -1315,7 +1436,162 @@ window.__app = {
     State._vpcChapter = null;
     State._gpChapter = null;
     State._wpChapter = null;
+    State._tbInit = false;
+    State._tiInit = false;
     Modules.render(module);
+  },
+
+  // --- 选词翻译交互 ---
+  selectTransWord(btn) {
+    if (btn.classList.contains('used')) return;
+    const word = btn.dataset.word;
+    const slots = Utils.$$$('.trans-blank-slot');
+    const emptySlot = slots.find(s => !s.dataset.filled);
+    if (emptySlot) {
+      emptySlot.dataset.filled = word;
+      emptySlot.textContent = word;
+      emptySlot.classList.add('filled');
+      btn.classList.add('used');
+    }
+  },
+
+  _unselectTransWord(slot) {
+    const word = slot.dataset.filled;
+    if (!word) return;
+    slot.dataset.filled = '';
+    slot.textContent = '';
+    slot.classList.remove('filled');
+    const chip = document.querySelector('.trans-word-chip[data-word="' + word + '"]');
+    if (chip) chip.classList.remove('used');
+  },
+
+  submitTransBlank() {
+    const t = State.practiceQuestions[State.practiceIndex];
+    const slots = Utils.$$$('.trans-blank-slot');
+    let allFilled = true;
+    let allCorrect = true;
+    const userAnswer = [];
+    slots.forEach(s => {
+      const filled = s.dataset.filled;
+      const correct = s.dataset.correct;
+      userAnswer.push(filled || '(空)');
+      if (!filled) allFilled = false;
+      if (filled !== correct) allCorrect = false;
+    });
+
+    if (!allFilled) { Utils.toast('请填完所有空格', 'warning'); return; }
+
+    State.practiceAnswers.push({
+      question: t.cn,
+      userAnswer: userAnswer.join(' '),
+      correctAnswer: t.en,
+      correct: allCorrect
+    });
+
+    const fb = Utils.$('practiceFeedback');
+    if (allCorrect) {
+      State.practiceCorrect++;
+      Utils.toast('翻译正确！', 'success');
+      if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+    } else {
+      Utils.toast('翻译错误', 'error');
+      Storage.addWrongQuestion('trans-blank', 1, t.cn, userAnswer.join(' '), t.en);
+      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+    }
+
+    setTimeout(() => {
+      State.practiceIndex++;
+      Modules._renderTransBlankQuestion();
+    }, 2500);
+  },
+
+  skipTransBlank() {
+    const t = State.practiceQuestions[State.practiceIndex];
+    State.practiceAnswers.push({
+      question: t.cn,
+      userAnswer: '(跳过)',
+      correctAnswer: t.en,
+      correct: false
+    });
+    State.practiceIndex++;
+    Modules._renderTransBlankQuestion();
+  },
+
+  // --- 手动翻译交互 ---
+  submitTransInput() {
+    const input = Utils.$('practiceInput');
+    if (!input) return;
+    const userAns = input.value.trim();
+    if (!userAns) { Utils.toast('请输入翻译', 'warning'); return; }
+
+    const t = State.practiceQuestions[State.practiceIndex];
+    const correct = Modules._checkTranslation(userAns, t.en);
+
+    State.practiceAnswers.push({
+      question: t.cn,
+      userAnswer: userAns,
+      correctAnswer: t.en,
+      correct: correct
+    });
+
+    const fb = Utils.$('practiceFeedback');
+    if (correct) {
+      State.practiceCorrect++;
+      Utils.toast('翻译正确！', 'success');
+      if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+    } else {
+      Utils.toast('翻译不完整，请查看正确翻译', 'error');
+      Storage.addWrongQuestion('trans-input', 1, t.cn, userAns, t.en);
+      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+    }
+
+    setTimeout(() => {
+      State.practiceIndex++;
+      Modules._renderTransInputQuestion();
+    }, 3000);
+  },
+
+  skipTransInput() {
+    const t = State.practiceQuestions[State.practiceIndex];
+    State.practiceAnswers.push({
+      question: t.cn,
+      userAnswer: '(跳过)',
+      correctAnswer: t.en,
+      correct: false
+    });
+    State.practiceIndex++;
+    Modules._renderTransInputQuestion();
+  },
+
+  // --- 翻译判定与格式化工具 ---
+  _checkTranslation(userAns, correctEn) {
+    const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const userNorm = normalize(userAns);
+    const correctNorm = normalize(correctEn);
+    const userWords = userNorm.split(' ').filter(w => w.length > 0);
+    const correctWords = correctNorm.split(' ').filter(w => w.length > 0);
+
+    if (userNorm === correctNorm) return true;
+
+    const correctSet = new Set(correctWords);
+    let matched = 0;
+    userWords.forEach(w => { if (correctSet.has(w)) matched++; });
+
+    const coverage = matched / correctWords.length;
+    const reverseCoverage = correctWords.filter(w => userWords.includes(w)).length / correctWords.length;
+
+    return coverage >= 0.7 && reverseCoverage >= 0.6;
+  },
+
+  _formatKeyVocab(keyVocab) {
+    if (!keyVocab || !keyVocab.length) return '';
+    let html = '<div class="key-vocab-list">';
+    keyVocab.forEach(kv => {
+      const tag = kv.above ? '<span class="vocab-tag above">超纲</span>' : '<span class="vocab-tag">重点</span>';
+      html += '<div class="key-vocab-item">' + tag + ' <b>' + Utils.esc(kv.word) + '</b> — ' + Utils.esc(kv.meaning) + '</div>';
+    });
+    html += '</div>';
+    return html;
   },
 
   // 应用文练习
