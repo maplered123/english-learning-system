@@ -1494,16 +1494,24 @@ window.__app = {
       State.practiceCorrect++;
       Utils.toast('翻译正确！', 'success');
       if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + this._formatKeyVocab(t.keyVocab) + '</div>';
+      setTimeout(() => {
+        State.practiceIndex++;
+        Modules._renderTransBlankQuestion();
+      }, 1200);
     } else {
       Utils.toast('翻译错误', 'error');
       Storage.addWrongQuestion('trans-blank', 1, t.cn, userAnswer.join(' '), t.en);
-      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + this._formatKeyVocab(t.keyVocab) + '</div>';
+      if (fb) {
+        let fbHtml = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + this._formatKeyVocab(t.keyVocab) + '</div>';
+        fbHtml += '<button class="btn btn-primary" style="margin-top:12px" onclick="window.__app.nextTransBlank()">下一题 →</button>';
+        fb.innerHTML = fbHtml;
+      }
     }
+  },
 
-    setTimeout(() => {
-      State.practiceIndex++;
-      Modules._renderTransBlankQuestion();
-    }, 2500);
+  nextTransBlank() {
+    State.practiceIndex++;
+    Modules._renderTransBlankQuestion();
   },
 
   skipTransBlank() {
