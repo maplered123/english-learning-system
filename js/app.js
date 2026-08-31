@@ -1492,11 +1492,11 @@ window.__app = {
     if (allCorrect) {
       State.practiceCorrect++;
       Utils.toast('翻译正确！', 'success');
-      if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+      if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + this._formatKeyVocab(t.keyVocab) + '</div>';
     } else {
       Utils.toast('翻译错误', 'error');
       Storage.addWrongQuestion('trans-blank', 1, t.cn, userAnswer.join(' '), t.en);
-      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + this._formatKeyVocab(t.keyVocab) + '</div>';
     }
 
     setTimeout(() => {
@@ -1525,7 +1525,7 @@ window.__app = {
     if (!userAns) { Utils.toast('请输入翻译', 'warning'); return; }
 
     const t = State.practiceQuestions[State.practiceIndex];
-    const correct = Modules._checkTranslation(userAns, t.en);
+    const correct = this._checkTranslation(userAns, t.en);
 
     State.practiceAnswers.push({
       question: t.cn,
@@ -1538,11 +1538,11 @@ window.__app = {
     if (correct) {
       State.practiceCorrect++;
       Utils.toast('翻译正确！', 'success');
-      if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+      if (fb) fb.innerHTML = '<div class="feedback-correct">✅ 正确！' + this._formatKeyVocab(t.keyVocab) + '</div>';
     } else {
       Utils.toast('翻译不完整，请查看正确翻译', 'error');
       Storage.addWrongQuestion('trans-input', 1, t.cn, userAns, t.en);
-      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + Modules._formatKeyVocab(t.keyVocab) + '</div>';
+      if (fb) fb.innerHTML = '<div class="feedback-wrong">❌ 正确翻译: ' + Utils.esc(t.en) + this._formatKeyVocab(t.keyVocab) + '</div>';
     }
 
     setTimeout(() => {
@@ -1560,7 +1560,38 @@ window.__app = {
       correct: false
     });
     State.practiceIndex++;
-    Modules._renderTransInputQuestion();
+   Modules._renderTransInputQuestion();
+  },
+
+  // --- 翻译判定与格式化工具 ---
+  _checkTranslation(userAns, correctEn) {
+    const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const userNorm = normalize(userAns);
+    const correctNorm = normalize(correctEn);
+    const userWords = userNorm.split(' ').filter(w => w.length > 0);
+    const correctWords = correctNorm.split(' ').filter(w => w.length > 0);
+
+    if (userNorm === correctNorm) return true;
+
+    const correctSet = new Set(correctWords);
+    let matched = 0;
+    userWords.forEach(w => { if (correctSet.has(w)) matched++; });
+
+    const coverage = matched / correctWords.length;
+    const reverseCoverage = correctWords.filter(w => userWords.includes(w)).length / correctWords.length;
+
+    return coverage >= 0.7 && reverseCoverage >= 0.6;
+  },
+
+  _formatKeyVocab(keyVocab) {
+    if (!keyVocab || !keyVocab.length) return '';
+    let html = '<div class="key-vocab-list">';
+    keyVocab.forEach(kv => {
+      const tag = kv.above ? '<span class="vocab-tag above">超纲</span>' : '<span class="vocab-tag">重点</span>';
+      html += '<div class="key-vocab-item">' + tag + ' <b>' + Utils.esc(kv.word) + '</b> — ' + Utils.esc(kv.meaning) + '</div>';
+    });
+    html += '</div>';
+    return html;
   },
 
   // --- 翻译判定与格式化工具 ---
