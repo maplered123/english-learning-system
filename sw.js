@@ -3,7 +3,7 @@
  * 实现离线缓存和 PWA 功能
  */
 
-const CACHE_NAME = 'english-learning-v1';
+const CACHE_NAME = 'english-learning-v3';
 const OFFLINE_URL = '/';
 
 // 需要缓存的核心资源
@@ -20,7 +20,10 @@ const PRECACHE_URLS = [
   '/js/data/vocabulary5.js',
   '/js/data/grammar.js',
   '/js/data/writing.js',
-  '/js/data/reading.js'
+  '/js/data/reading.js',
+  '/js/data/translation.js',
+  '/js/data/exam-papers.js',
+  '/js/data/word-forms.js'
 ];
 
 // 安装时预缓存核心资源
@@ -75,36 +78,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // 静态资源：缓存优先，网络更新
+  // 静态资源：网络优先，离线回退缓存
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // 有缓存，先返回缓存，同时后台更新
-        fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseToCache);
-            });
-          }
-        }).catch(() => {
-          // 网络失败，忽略（用缓存就行）
+    fetch(request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, responseToCache);
         });
-        return cachedResponse;
       }
-      
-      // 没有缓存，走网络
-      return fetch(request).then((networkResponse) => {
-        // 缓存成功的响应
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // 网络失败，返回离线页面
+      return networkResponse;
+    }).catch(() => {
+      // 网络失败，回退缓存
+      return caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
         if (request.mode === 'navigate') {
           return caches.match(OFFLINE_URL);
         }

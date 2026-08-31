@@ -206,6 +206,18 @@
         window.addEventListener('load', function() {
             navigator.serviceWorker.register('sw.js').then(function(registration) {
                 console.log('PWA: ServiceWorker 注册成功', registration.scope);
+                // 检测更新
+                registration.addEventListener('updatefound', function() {
+                    var newWorker = registration.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                                console.log('PWA: 新版本已激活，刷新页面');
+                                window.location.reload();
+                            }
+                        });
+                    }
+                });
             }).catch(function(err) {
                 console.warn('PWA: ServiceWorker 注册失败', err);
             });
