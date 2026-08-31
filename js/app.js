@@ -492,6 +492,7 @@ const Modules = {
       'wrong-book': () => Modules.wrongBook(),
       'exam-papers': () => Modules.examPapers(),
       'daily-checkin': () => Modules.dailyCheckin(),
+      'dictionary': () => Modules.dictionary(),
       'dashboard': () => Modules.dashboard()
     };
     if (map[module]) { map[module](); Nav.updateProgress(); }
@@ -1378,6 +1379,7 @@ const Modules = {
     html += '<a class="quick-link" onclick="window.__app.nav(\'exam-papers\')">📄 真题套题</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'wrong-book\')">❌ 错题本</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'daily-checkin\')">📅 每日打卡</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'dictionary\')">📚 词典查词</a>';
     html += '</div></div>';
 
     Utils.$('mainContent').innerHTML = html;
@@ -1694,6 +1696,11 @@ window.__app = {
   },
 
   speak(text) { Utils.speak(text); },
+
+  // 词典查词
+  dictSearch() { Modules.dictSearch(); },
+  dictLookup(word) { Modules.dictLookup(word); },
+  dictSuggest(query) { Modules.dictSuggest(query); },
 
   showImage(word, meaning) {
     const url = Utils.getImageUrl(word, meaning);
@@ -2309,6 +2316,463 @@ window.__app = {
       html += '</div>';
     }
     grid.innerHTML = html;
+  },
+
+  // ===== 词典查词 =====
+  _dictIndex: null,
+  _dictHistory: [],
+
+  _buildDictIndex() {
+    if (this._dictIndex) return this._dictIndex;
+    this._dictIndex = {};
+    if (typeof VOCAB_DATA === 'undefined') return this._dictIndex;
+    VOCAB_DATA.forEach(chapter => {
+      if (!chapter || !chapter[1]) return;
+      chapter[1].forEach(entry => {
+        if (entry && entry[0]) {
+          this._dictIndex[entry[0].toLowerCase()] = {
+            word: entry[0],
+            phonetic: entry[1] || '',
+            pos: entry[2] || '',
+            meaning: entry[3] || '',
+            synonyms: entry[4] || [],
+            example: entry[5] || '',
+            exampleZh: entry[6] || ''
+          };
+        }
+      });
+    });
+    return this._dictIndex;
+  },
+
+  dictionary() {
+    this._buildDictIndex();
+    let html = '<div class="dict-page">';
+
+    html += '<div class="dict-search-box">';
+    html += '<div class="dict-search-row">';
+    html += '<input type="text" class="dict-search-input" id="dictInput" placeholder="输入英文单词查词..." autocomplete="off" />';
+    html += '<button class="btn btn-primary dict-search-btn" onclick="window.__app.dictSearch()">🔍 查词</button>';
+    html += '</div>';
+    html += '<div class="dict-suggestions" id="dictSuggestions"></div>';
+    html += '</div>';
+
+    const history = this._dictHistory;
+    if (history.length > 0) {
+      html += '<div class="dict-history">';
+      html += '<div class="dict-history-title">📖 最近查词</div>';
+      html += '<div class="dict-history-tags">';
+      history.slice(-12).reverse().forEach(w => {
+        html += '<span class="dict-history-tag" onclick="window.__app.dictLookup(\'' + Utils.esc(w) + '\')">' + Utils.esc(w) + '</span>';
+      });
+      html += '</div></div>';
+    }
+
+    const totalWords = Object.keys(this._dictIndex).length;
+    html += '<div class="dict-intro">';
+    html += '<div class="dict-intro-card">';
+    html += '<div class="dict-intro-icon">📚</div>';
+    html += '<div class="dict-intro-text">';
+    html += '<h3>智能词典</h3>';
+    html += '<p>收录 ' + totalWords + ' 个核心词汇，支持在线查词。输入单词即可查看中文释义、音标、同义词、例句及词形变换。</p>';
+    html += '</div></div>';
+    html += '<div class="dict-features">';
+    html += '<div class="dict-feature"><span class="dict-feature-icon">🔤</span><span>音标发音</span></div>';
+    html += '<div class="dict-feature"><span class="dict-feature-icon">📝</span><span>中文释义</span></div>';
+    html += '<div class="dict-feature"><span class="dict-feature-icon">🔀</span><span>同义词</span></div>';
+    html += '<div class="dict-feature"><span class="dict-feature-icon">📐</span><span>词形变换</span></div>';
+    html += '<div class="dict-feature"><span class="dict-feature-icon">💬</span><span>例句</span></div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '</div>';
+
+    Utils.$('mainContent').innerHTML = html;
+
+    const input = Utils.$('dictInput');
+    if (input) {
+      input.focus();
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') window.__app.dictSearch();
+      });
+      input.addEventListener('input', () => {
+        window.__app.dictSuggest(input.value);
+      });
+    }
+  },
+
+  dictSuggest(query) {
+    const container = Utils.$('dictSuggestions');
+    if (!container) return;
+    query = query.trim().toLowerCase();
+    if (!query || query.length < 1) { container.innerHTML = ''; return; }
+    const index = this._buildDictIndex();
+    const matches = Object.keys(index).filter(w => w.startsWith(query)).slice(0, 8);
+    if (matches.length === 0) { container.innerHTML = ''; return; }
+    let html = '';
+    matches.forEach(w => {
+      const entry = index[w];
+      html += '<div class="dict-suggest-item" onclick="window.__app.dictLookup(\'' + Utils.esc(w) + '\')">';
+      html += '<span class="dict-suggest-word">' + Utils.esc(entry.word) + '</span>';
+      html += '<span class="dict-suggest-meaning">' + Utils.esc(entry.meaning.split(/[;；]/)[0]) + '</span>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  },
+
+  dictSearch() {
+    const input = Utils.$('dictInput');
+    if (!input) return;
+    const word = input.value.trim();
+    if (!word) { Utils.toast('请输入要查询的单词', 'warning'); return; }
+    this.dictLookup(word);
+  },
+
+  async dictLookup(word) {
+    word = word.trim().toLowerCase();
+    if (!word) return;
+
+    Utils.$('dictSuggestions').innerHTML = '';
+    const input = Utils.$('dictInput');
+    if (input) input.value = word;
+
+    const resultArea = Utils.$('mainContent');
+    let html = '<div class="dict-page">';
+    html += '<div class="dict-search-box">';
+    html += '<div class="dict-search-row">';
+    html += '<input type="text" class="dict-search-input" id="dictInput" value="' + Utils.esc(word) + '" placeholder="输入英文单词查词..." autocomplete="off" />';
+    html += '<button class="btn btn-primary dict-search-btn" onclick="window.__app.dictSearch()">🔍 查词</button>';
+    html += '</div>';
+    html += '<div class="dict-suggestions" id="dictSuggestions"></div>';
+    html += '</div>';
+    html += '<div class="dict-loading"><div class="dict-loading-spinner"></div><p>正在查询 "' + Utils.esc(word) + '"...</p></div>';
+    html += '</div>';
+    resultArea.innerHTML = html;
+
+    const newInput = Utils.$('dictInput');
+    if (newInput) {
+      newInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') window.__app.dictSearch();
+      });
+      newInput.addEventListener('input', () => {
+        window.__app.dictSuggest(newInput.value);
+      });
+    }
+
+    let entry = this._buildDictIndex()[word] || null;
+    let apiData = null;
+
+    if (!entry) {
+      try {
+        apiData = await this._fetchDictApi(word);
+        if (apiData && ((apiData.translation && apiData.translation.length > 0) || (apiData.explains && apiData.explains.length > 0))) {
+          const hasZhTrans = apiData.translation && apiData.translation.length > 0;
+          entry = {
+            word: word,
+            phonetic: apiData.phonetic || '',
+            pos: apiData.pos || '',
+            meaning: hasZhTrans ? apiData.translation.join('; ') : (apiData.explains || []).join('; '),
+            synonyms: apiData.synonyms || [],
+            example: (apiData.examples && apiData.examples[0] && apiData.examples[0].en) || '',
+            exampleZh: (apiData.examples && apiData.examples[0] && apiData.examples[0].zh) || '',
+            explains: apiData.explains || []
+          };
+          if (apiData.examples && apiData.examples.length > 0) {
+            entry.examples = apiData.examples;
+          }
+        }
+      } catch (e) {
+        console.warn('Dict API failed:', e);
+      }
+    }
+
+    if (!entry) {
+      let nfHtml = '<div class="dict-page">';
+      nfHtml += '<div class="dict-search-box">';
+      nfHtml += '<div class="dict-search-row">';
+      nfHtml += '<input type="text" class="dict-search-input" id="dictInput" value="' + Utils.esc(word) + '" placeholder="输入英文单词查词..." autocomplete="off" />';
+      nfHtml += '<button class="btn btn-primary dict-search-btn" onclick="window.__app.dictSearch()">🔍 查词</button>';
+      nfHtml += '</div>';
+      nfHtml += '<div class="dict-suggestions" id="dictSuggestions"></div>';
+      nfHtml += '</div>';
+      nfHtml += '<div class="dict-not-found">';
+      nfHtml += '<div class="dict-nf-icon">🔍</div>';
+      nfHtml += '<p>未找到 "' + Utils.esc(word) + '" 的释义</p>';
+      nfHtml += '<p class="dict-nf-hint">该词不在本地词库中，请检查拼写或尝试其他单词</p>';
+      nfHtml += '</div>';
+      nfHtml += '</div>';
+      resultArea.innerHTML = nfHtml;
+      const nfInput = Utils.$('dictInput');
+      if (nfInput) {
+        nfInput.focus();
+        nfInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') window.__app.dictSearch();
+        });
+        nfInput.addEventListener('input', () => {
+          window.__app.dictSuggest(nfInput.value);
+        });
+      }
+      return;
+    }
+
+    if (!this._dictHistory.includes(word)) {
+      this._dictHistory.push(word);
+      if (this._dictHistory.length > 50) this._dictHistory.shift();
+    }
+
+    let rHtml = '<div class="dict-page">';
+    rHtml += '<div class="dict-search-box">';
+    rHtml += '<div class="dict-search-row">';
+    rHtml += '<input type="text" class="dict-search-input" id="dictInput" value="' + Utils.esc(word) + '" placeholder="输入英文单词查词..." autocomplete="off" />';
+    rHtml += '<button class="btn btn-primary dict-search-btn" onclick="window.__app.dictSearch()">🔍 查词</button>';
+    rHtml += '</div>';
+    rHtml += '<div class="dict-suggestions" id="dictSuggestions"></div>';
+    rHtml += '</div>';
+
+    rHtml += this._renderDictResult(entry);
+    rHtml += '</div>';
+
+    resultArea.innerHTML = rHtml;
+
+    const rInput = Utils.$('dictInput');
+    if (rInput) {
+      rInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') window.__app.dictSearch();
+      });
+      rInput.addEventListener('input', () => {
+        window.__app.dictSuggest(rInput.value);
+      });
+    }
+  },
+
+  _renderDictResult(entry) {
+    let html = '<div class="dict-result">';
+
+    // 头部：单词 + 音标 + 发音
+    html += '<div class="dict-result-header">';
+    html += '<div class="dict-word-main">';
+    html += '<h2 class="dict-word">' + Utils.esc(entry.word) + '</h2>';
+    if (entry.phonetic) {
+      html += '<span class="dict-phonetic">/' + Utils.esc(entry.phonetic) + '/</span>';
+    }
+    html += '<button class="dict-speak-btn" onclick="window.__app.speak(decodeURIComponent(\'' + encodeURIComponent(entry.word) + '\'))" title="点击发音">🔊 发音</button>';
+    html += '</div>';
+    if (entry.pos) {
+      html += '<span class="dict-pos-tag">' + Utils.esc(entry.pos) + '</span>';
+    }
+    html += '</div>';
+
+    // 中文释义
+    html += '<div class="dict-section dict-section-translation">';
+    html += '<div class="dict-section-title"><span class="dict-section-icon">📖</span> 释义</div>';
+    html += '<div class="dict-meaning">';
+    if (entry.explains && entry.explains.length > 0) {
+      entry.explains.forEach(exp => {
+        html += '<div class="dict-meaning-line">' + Utils.esc(exp) + '</div>';
+      });
+    } else {
+      html += '<div class="dict-meaning-line">' + Utils.esc(entry.meaning) + '</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // 词形变换
+    const forms = this._generateWordForms(entry);
+    if (forms && forms.length > 0) {
+      html += '<div class="dict-section dict-section-forms">';
+      html += '<div class="dict-section-title"><span class="dict-section-icon">🔄</span> 词形变换</div>';
+      html += '<div class="dict-forms-grid">';
+      forms.forEach(f => {
+        html += '<div class="dict-form-item" onclick="window.__app.dictLookup(\'' + Utils.esc(f.form) + '\')">';
+        html += '<span class="dict-form-label">' + Utils.esc(f.label) + '</span>';
+        html += '<span class="dict-form-word">' + Utils.esc(f.form) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '</div>';
+    }
+
+    // 同义词
+    const synonyms = entry.synonyms || [];
+    if (synonyms.length > 0) {
+      const enSyns = synonyms.filter(s => /^[a-zA-Z]/.test(s));
+      const zhSyns = synonyms.filter(s => !/^[a-zA-Z]/.test(s));
+      if (enSyns.length > 0) {
+        html += '<div class="dict-section dict-section-synonyms">';
+        html += '<div class="dict-section-title"><span class="dict-section-icon">🔀</span> 同义词</div>';
+        html += '<div class="dict-synonyms">';
+        enSyns.forEach(s => {
+          html += '<span class="dict-syn-tag" onclick="window.__app.dictLookup(\'' + Utils.esc(s) + '\')">' + Utils.esc(s) + '</span>';
+        });
+        html += '</div>';
+        html += '</div>';
+      }
+      if (zhSyns.length > 0) {
+        html += '<div class="dict-section dict-section-synonyms-zh">';
+        html += '<div class="dict-section-title"><span class="dict-section-icon">📝</span> 中文近义词</div>';
+        html += '<div class="dict-synonyms-zh-list">';
+        zhSyns.forEach(s => {
+          html += '<span class="dict-syn-zh-tag">' + Utils.esc(s) + '</span>';
+        });
+        html += '</div>';
+        html += '</div>';
+      }
+    }
+
+    // 例句
+    const examples = [];
+    if (entry.example) {
+      examples.push({ en: entry.example, zh: entry.exampleZh });
+    }
+    if (entry.examples && entry.examples.length > 0) {
+      entry.examples.forEach(ex => {
+        if (ex.en && (!examples[0] || ex.en !== examples[0].en)) {
+          examples.push(ex);
+        }
+      });
+    }
+    if (examples.length > 0) {
+      html += '<div class="dict-section dict-section-examples">';
+      html += '<div class="dict-section-title"><span class="dict-section-icon">💬</span> 例句</div>';
+      examples.slice(0, 3).forEach((ex, i) => {
+        html += '<div class="dict-example">';
+        html += '<div class="dict-example-en">' + Utils.esc(ex.en) + ' <button class="dict-ex-speak" onclick="window.__app.speak(decodeURIComponent(\'' + encodeURIComponent(ex.en) + '\'))" title="朗读">🔊</button></div>';
+        if (ex.zh) {
+          html += '<div class="dict-example-zh">' + Utils.esc(ex.zh) + '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  },
+
+  _generateWordForms(entry) {
+    if (typeof WordFormsUtil === 'undefined') return [];
+    const word = entry.word.toLowerCase();
+    const pos = (entry.pos || '').toLowerCase();
+    const forms = [];
+
+    // 动词变形
+    if (pos === 'v.' || pos.startsWith('v.') || pos.includes('vt') || pos.includes('vi')) {
+      const vf = WordFormsUtil.getVerbForms(word);
+      if (vf.thirdPerson && vf.thirdPerson !== word) forms.push({ label: '第三人称', form: vf.thirdPerson });
+      if (vf.pastTense && vf.pastTense !== word) forms.push({ label: '过去式', form: vf.pastTense });
+      if (vf.pastParticiple && vf.pastParticiple !== word) forms.push({ label: '过去分词', form: vf.pastParticiple });
+      if (vf.presentParticiple && vf.presentParticiple !== word) forms.push({ label: '现在分词', form: vf.presentParticiple });
+    }
+
+    // 名词复数
+    if (pos === 'n.' || pos.startsWith('n.')) {
+      const plural = WordFormsUtil.getNounPlural(word);
+      if (plural && plural !== word) forms.push({ label: '复数', form: plural });
+    }
+
+    // 形容词比较级/最高级
+    if (pos.includes('adj') || pos.includes('a.')) {
+      const af = WordFormsUtil.getAdjForms(word);
+      if (af.comparative && af.comparative !== word) forms.push({ label: '比较级', form: af.comparative });
+      if (af.superlative && af.superlative !== word) forms.push({ label: '最高级', form: af.superlative });
+    }
+
+    // 无词性信息时，根据后缀推断
+    if (!pos && word.length > 2) {
+      if (/(ize|ise|ify|en)$/.test(word) && !/(ation|tion|ment|ness|ity)$/.test(word)) {
+        const vf = WordFormsUtil.getVerbForms(word);
+        if (vf.thirdPerson !== word) forms.push({ label: '第三人称', form: vf.thirdPerson });
+        if (vf.pastTense !== word) forms.push({ label: '过去式', form: vf.pastTense });
+        if (vf.pastParticiple !== word) forms.push({ label: '过去分词', form: vf.pastParticiple });
+        if (vf.presentParticiple !== word) forms.push({ label: '现在分词', form: vf.presentParticiple });
+      }
+      if (/(tion|sion|ment|ness|ity|ship|hood)$/.test(word)) {
+        const plural = WordFormsUtil.getNounPlural(word);
+        if (plural !== word) forms.push({ label: '复数', form: plural });
+      }
+      if (/(ful|less|ous|ive|al|able|ible)$/.test(word)) {
+        const af = WordFormsUtil.getAdjForms(word);
+        if (af.comparative !== word) forms.push({ label: '比较级', form: af.comparative });
+        if (af.superlative !== word) forms.push({ label: '最高级', form: af.superlative });
+      }
+    }
+
+    // 派生词（所有词性都尝试）
+    const der = WordFormsUtil.getDerivations(word);
+    if (der) {
+      if (der.noun && der.noun !== word && !forms.find(f => f.form === der.noun)) {
+        forms.push({ label: '名词', form: der.noun });
+      }
+      if (der.verb && der.verb !== word && !forms.find(f => f.form === der.verb)) {
+        forms.push({ label: '动词', form: der.verb });
+      }
+      if (der.adjective && der.adjective !== word && !forms.find(f => f.form === der.adjective)) {
+        forms.push({ label: '形容词', form: der.adjective });
+      }
+      if (der.adverb && der.adverb !== word && !forms.find(f => f.form === der.adverb)) {
+        forms.push({ label: '副词', form: der.adverb });
+      }
+    }
+
+    return forms;
+  },
+
+  async _fetchDictApi(word) {
+    const isOnline = window.location.protocol !== 'file:' && window.location.hostname !== '';
+    if (!isOnline) return null;
+
+    try {
+      const resp = await fetch('/api/dict?word=' + encodeURIComponent(word));
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && !data.error) return data;
+      }
+    } catch (e) {
+      console.warn('Dict API fetch failed:', e);
+    }
+
+    try {
+      const resp2 = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word));
+      if (resp2.ok) {
+        const data2 = await resp2.json();
+        if (Array.isArray(data2) && data2.length > 0) {
+          const d = data2[0];
+          const phonetic = (d.phonetic || (d.phonetics && d.phonetics[0] && d.phonetics[0].text) || '').replace(/\//g, '');
+          const meanings = d.meanings || [];
+          const explains = [];
+          const synonyms = [];
+          const examples = [];
+          meanings.forEach(m => {
+            const pos = m.partOfSpeech || '';
+            (m.definitions || []).forEach(def => {
+              let line = '';
+              if (pos) line += pos + ' ';
+              line += def.definition || '';
+              if (def.example) {
+                examples.push({ en: def.example, zh: '' });
+              }
+              explains.push(line);
+            });
+            if (m.synonyms && m.synonyms.length > 0) {
+              synonyms.push(...m.synonyms.slice(0, 5));
+            }
+          });
+          return {
+            word: word,
+            phonetic: phonetic,
+            pos: '',
+            translation: [],
+            explains: explains,
+            synonyms: [...new Set(synonyms)].slice(0, 8),
+            examples: examples.slice(0, 5)
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Free Dictionary API failed:', e);
+    }
+
+    return null;
   }
 };
 
