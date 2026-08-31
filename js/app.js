@@ -345,8 +345,42 @@ const Utils = {
   speak(text) {
     const word = text.trim();
     const isShort = word.split(/\s+/).length <= 3;
-
-    // 获取或创建持久化 audio 元素
+    if (isShort) {
+      this._playAudioWord(word);
+    } else {
+      this._speakFallback(word);
+    }
+  },
+  async _playAudioWord(word) {
+    const youdaoUrl = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
+    const proxies = [
+      'https://corsproxy.io/?url=',
+      'https://api.allorigins.win/raw?url='
+    ];
+    for (const proxy of proxies) {
+      try {
+        const resp = await fetch(proxy + encodeURIComponent(youdaoUrl));
+        if (resp.ok) {
+          const blob = await resp.blob();
+          await this._playBlob(blob);
+          return;
+        }
+      } catch (e) { /* try next */ }
+    }
+    // 直接尝试 StreamElements TTS
+    try {
+      const seUrl = 'https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(word);
+      const resp = await fetch(seUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        await this._playBlob(blob);
+        return;
+      }
+    } catch (e) { /* fallback */ }
+    // 最后尝试 speechSynthesis
+    this._speakFallback(word);
+  },
+  async _playBlob(blob) {
     let audioEl = document.getElementById('tts-audio');
     if (!audioEl) {
       audioEl = document.createElement('audio');
@@ -354,20 +388,9 @@ const Utils = {
       audioEl.style.display = 'none';
       document.body.appendChild(audioEl);
     }
-
-    // 1. 单词/短语用有道词典发音
-    if (isShort) {
-      audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
-      audioEl.play().then(() => { return; }).catch(() => {
-        // 有道失败，尝试备用
-        audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=1';
-        audioEl.play().catch(() => this._speakFallback(word));
-      });
-      return;
-    }
-
-    // 2. 长句子用 speechSynthesis 或 TTS API
-    this._speakFallback(word);
+    const objUrl = URL.createObjectURL(blob);
+    audioEl.src = objUrl;
+    await audioEl.play();
   },
   _speakFallback(text) {
     if ('speechSynthesis' in window && this._voicesLoaded) {
@@ -383,11 +406,17 @@ const Utils = {
       this._speakAudioApi(text);
     }
   },
-  _speakAudioApi(text) {
-    const audio = new Audio('https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(text));
-    audio.play().catch(() => {
-      Utils.toast('语音播放失败，请检查网络', 'warning');
-    });
+  async _speakAudioApi(text) {
+    try {
+      const seUrl = 'https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(text);
+      const resp = await fetch(seUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        await this._playBlob(blob);
+        return;
+      }
+    } catch (e) { /* fallback */ }
+    Utils.toast('语音播放失败，请检查网络', 'warning');
   }
 };
 
