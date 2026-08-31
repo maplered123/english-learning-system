@@ -12,6 +12,15 @@ const VOCAB_DATA = [].concat(
   typeof VOCAB_PART4 !== 'undefined' ? VOCAB_PART4 : [],
   typeof VOCAB_PART5 !== 'undefined' ? VOCAB_PART5 : []
 );
+// 合并补充词汇库 VOCAB_EXTRA（依据《高等职业教育专科英语课程标准（2021年版）》及四川专升本高频词表补充）
+// VOCAB_EXTRA 结构为 { 章节号: [词条数组...] }，按章节号追加到对应章的词条后
+if (typeof VOCAB_EXTRA !== 'undefined' && VOCAB_EXTRA) {
+  VOCAB_DATA.forEach(function(ch) {
+    if (ch && ch[0] && Array.isArray(VOCAB_EXTRA[ch[0][0]])) {
+      ch[1] = (Array.isArray(ch[1]) ? ch[1] : []).concat(VOCAB_EXTRA[ch[0][0]]);
+    }
+  });
+}
 const G_DATA = typeof GRAMMAR_DATA !== 'undefined' ? GRAMMAR_DATA : { chapters: [] };
 const W_DATA = typeof WRITING_DATA !== 'undefined' ? WRITING_DATA : { chapters: [] };
 const R_DATA = typeof READING_DATA !== 'undefined' ? READING_DATA : { articles: [] };
@@ -548,7 +557,7 @@ const Modules = {
     html += '<div class="word-list">';
     words.forEach((w, idx) => {
       const [word, phonetic, pos, meaning, synonyms, exEn, exCn] = w;
-      const imgUrl = Utils.getImageUrl(word, meaning);
+      const formsHtml = this._renderWordForms(word, pos);
       html += '<div class="word-card" data-word="' + Utils.esc(word) + '">';
       html += '<div class="word-card-header">';
       html += '<div class="word-main">';
@@ -558,7 +567,6 @@ const Modules = {
       html += '</div>';
       html += '<div class="word-actions">';
       html += '<button class="btn-icon" onclick="window.__app.speak(\'' + Utils.esc(word) + '\')" title="朗读">🔊</button>';
-      html += '<button class="btn-icon" onclick="window.__app.showImage(\'' + Utils.esc(word) + '\',\'' + Utils.esc(meaning) + '\')" title="图片">🖼️</button>';
       html += '</div>';
       html += '</div>';
       html += '<div class="word-meaning">' + Utils.esc(meaning) + '</div>';
@@ -571,9 +579,12 @@ const Modules = {
       html += '<div class="ex-en">' + Utils.esc(exEn) + '</div>';
       html += '<div class="ex-cn">' + Utils.esc(exCn) + '</div>';
       html += '</div>';
-      html += '<div class="word-image-preview">';
-      html += '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'240\'%3E%3Crect fill=\'%232a2a2a\' width=\'400\' height=\'240\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23888\' font-size=\'14\' text-anchor=\'middle\' dy=\'.3em\'%3E📷 加载中...%3C/text%3E%3C/svg%3E" alt="' + Utils.esc(word) + '" loading="lazy" />';
-      html += '</div>';
+      if (formsHtml) {
+        html += '<div class="word-forms-box">';
+        html += '<div class="word-forms-title">🔤 词形变换</div>';
+        html += formsHtml;
+        html += '</div>';
+      }
       html += '</div>';
     });
     html += '</div>';
@@ -586,7 +597,78 @@ const Modules = {
     Utils.$('mainContent').innerHTML = html;
     Storage.setChapterProgress('vocab-learn', chId, { studied: true });
     Nav.updateProgress();
-    Utils.loadWordImages();
+  },
+
+  // 渲染词形变换HTML
+  _renderWordForms(word, pos) {
+    if (typeof WordFormsUtil === 'undefined') return '';
+    const lower = word.toLowerCase();
+    let html = '';
+    const items = [];
+
+    // 根据词性判断显示哪些变换
+    const posLower = (pos || '').toLowerCase();
+    const isVerb = posLower.includes('v.') || posLower.includes('动词');
+    const isAdj = posLower.includes('adj.') || posLower.includes('形容词') || posLower.includes('a.');
+    const isNoun = posLower.includes('n.') || posLower.includes('名词');
+
+    // 动词形式
+    if (isVerb) {
+      const vf = WordFormsUtil.getVerbForms(word);
+      if (vf) {
+        items.push({ label: '第三人称单数', value: vf.thirdPerson });
+        items.push({ label: '过去式', value: vf.pastTense });
+        items.push({ label: '过去分词', value: vf.pastParticiple });
+        items.push({ label: '现在分词', value: vf.presentParticiple });
+      }
+    }
+
+    // 形容词形式
+    if (isAdj) {
+      const af = WordFormsUtil.getAdjForms(word);
+      if (af) {
+        items.push({ label: '比较级', value: af.comparative });
+        items.push({ label: '最高级', value: af.superlative });
+      }
+    }
+
+    // 名词复数
+    if (isNoun) {
+      const np = WordFormsUtil.getNounPlural(word);
+      if (np && np !== word) {
+        items.push({ label: '复数', value: np });
+      }
+    }
+
+    // 派生词（附加）
+    const der = WordFormsUtil.getDerivations(word);
+    if (der) {
+      if (der.noun && der.noun !== word && !items.find(i => i.value === der.noun)) {
+        items.push({ label: '名词形式', value: der.noun });
+      }
+      if (der.adjective && der.adjective !== word && !items.find(i => i.value === der.adjective)) {
+        items.push({ label: '形容词形式', value: der.adjective });
+      }
+      if (der.verb && der.verb !== word && !items.find(i => i.value === der.verb)) {
+        items.push({ label: '动词形式', value: der.verb });
+      }
+      if (der.adverb && der.adverb !== word && !items.find(i => i.value === der.adverb)) {
+        items.push({ label: '副词形式', value: der.adverb });
+      }
+    }
+
+    if (items.length === 0) return '';
+
+    html += '<div class="word-forms-grid">';
+    items.forEach(item => {
+      html += '<div class="word-form-item" onclick="window.__app.dictLookup(\'' + Utils.esc(item.value) + '\')">';
+      html += '<span class="word-form-label">' + item.label + '</span>';
+      html += '<span class="word-form-value">' + Utils.esc(item.value) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    return html;
   },
 
   // --- 词汇练习 ---

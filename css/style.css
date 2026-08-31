@@ -1498,20 +1498,50 @@ body {
     color: var(--gray);
 }
 
-/* ===== 词汇图片预览 ===== */
-.word-image-preview {
+/* ===== 词汇词形变换 ===== */
+.word-forms-box {
     margin-top: 12px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(74,108,247,0.06) 0%, rgba(127,184,127,0.06) 100%);
     border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: var(--gray-light);
-    min-height: 40px;
+    border: 1px solid var(--border);
 }
-.word-image-preview img {
-    width: 100%;
-    max-height: 200px;
-    object-fit: cover;
-    display: block;
-    transition: opacity 0.3s ease;
+.word-forms-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+.word-forms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+}
+.word-form-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.word-form-item:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    transform: translateY(-1px);
+}
+.word-form-label {
+    font-size: 11px;
+    color: var(--gray);
+}
+.word-form-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
 }
 
 /* ===== 各板块颜色装饰 ===== */

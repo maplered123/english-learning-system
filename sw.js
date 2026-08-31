@@ -3,7 +3,7 @@
  * 实现离线缓存和 PWA 功能
  */
 
-const CACHE_NAME = 'english-learning-v8';
+const CACHE_NAME = 'english-learning-v9';
 const OFFLINE_URL = '/';
 
 // 需要缓存的核心资源
@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
   '/js/data/vocabulary3.js',
   '/js/data/vocabulary4.js',
   '/js/data/vocabulary5.js',
+  '/js/data/vocabulary6.js',
   '/js/data/grammar.js',
   '/js/data/writing.js',
   '/js/data/reading.js',
