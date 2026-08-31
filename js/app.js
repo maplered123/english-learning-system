@@ -1604,22 +1604,24 @@ window.__app = {
 
   // --- 翻译判定与格式化工具 ---
   _checkTranslation(userAns, correctEn) {
+    const stopWords = new Set(['the','a','an','is','are','was','were','be','been','being','to','of','in','on','at','by','for','with','from','as','it','its','that','this','these','those','he','she','they','we','you','i','his','her','their','our','your','my','and','or','but','not','no','do','does','did','has','have','had','will','would','can','could','should','shall','may','might']);
+    const stem = (w) => w.replace(/(ingly?|edly?|ies|s|ing|ed|ment|ness|tion|sion)$/i, '');
     const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-    const userNorm = normalize(userAns);
-    const correctNorm = normalize(correctEn);
-    const userWords = userNorm.split(' ').filter(w => w.length > 0);
-    const correctWords = correctNorm.split(' ').filter(w => w.length > 0);
+    const toStems = (s) => normalize(s).split(' ').filter(w => w.length > 1 && !stopWords.has(w)).map(stem);
+    const userStems = toStems(userAns);
+    const correctStems = toStems(correctEn);
 
-    if (userNorm === correctNorm) return true;
+    if (normalize(userAns) === normalize(correctEn)) return true;
+    if (userStems.length === 0 || correctStems.length === 0) return false;
 
-    const correctSet = new Set(correctWords);
+    const correctSet = new Set(correctStems);
     let matched = 0;
-    userWords.forEach(w => { if (correctSet.has(w)) matched++; });
+    userStems.forEach(s => { if (correctSet.has(s)) matched++; });
 
-    const coverage = matched / correctWords.length;
-    const reverseCoverage = correctWords.filter(w => userWords.includes(w)).length / correctWords.length;
+    const coverage = matched / correctStems.length;
+    const reverseCoverage = correctStems.filter(s => userStems.includes(s)).length / correctStems.length;
 
-    return coverage >= 0.7 && reverseCoverage >= 0.6;
+    return coverage >= 0.45 && reverseCoverage >= 0.4;
   },
 
   _formatKeyVocab(keyVocab) {
