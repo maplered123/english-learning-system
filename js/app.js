@@ -367,6 +367,7 @@ const Modules = {
     const map = {
       'vocab-learn': () => Modules.vocabLearn(),
       'vocab-practice': () => Modules.vocabPractice(),
+      'vocab-practice-choice': () => Modules.vocabPracticeChoice(),
       'grammar-learn': () => Modules.grammarLearn(),
       'grammar-practice': () => Modules.grammarPractice(),
       'writing-learn': () => Modules.writingLearn(),
@@ -507,7 +508,61 @@ const Modules = {
       State.practiceAnswers = [];
     }
 
-    Modules._renderPracticeQuestion('vocab-practice', '词汇练习');
+    Modules._renderPracticeQuestion('vocab-practice', '词汇翻译练习');
+  },
+
+  // --- 词汇选择题练习 ---
+  vocabPracticeChoice() {
+    const total = VOCAB_DATA.length;
+    if (State.showSelector) {
+      State.showSelector = false;
+      Modules.chapterSelector('词汇选择题', total, () => Modules.vocabPracticeChoice());
+      return;
+    }
+
+    if (State.practiceQuestions.length === 0 || State._vpcChapter !== State.currentChapter) {
+      State._vpcChapter = State.currentChapter;
+      const chapter = VOCAB_DATA.find(c => c[0][0] === State.currentChapter) || VOCAB_DATA[0];
+      const words = chapter[1];
+      const questions = [];
+      // 收集所有词义用于生成干扰项
+      const allMeanings = VOCAB_DATA.reduce((acc, ch) => {
+        ch[1].forEach(w => { acc.push(w[3]); });
+        return acc;
+      }, []);
+
+      words.forEach(w => {
+        const [word, phonetic, pos, meaning, synonyms, exEn, exCn] = w;
+        const correctMeaning = meaning.split(/[;；、]/)[0].trim();
+        // 从其他单词中随机取3个干扰项
+        const wrongOptions = Utils.shuffle(allMeanings.filter(m => m !== meaning))
+          .slice(0, 3)
+          .map(m => m.split(/[;；、]/)[0].trim());
+        const options = Utils.shuffle([correctMeaning, ...wrongOptions]);
+        questions.push({
+          type: 'choice',
+          word: word,
+          phonetic: phonetic,
+          pos: pos,
+          meaning: meaning,
+          correctMeaning: correctMeaning,
+          options: options,
+          answer: options.indexOf(correctMeaning),
+          synonyms: synonyms || [],
+          example: exEn,
+          exampleCn: exCn,
+          chapterId: chapter[0][0],
+          chapterName: chapter[0][1]
+        });
+      });
+      State.practiceQuestions = Utils.shuffle(questions).slice(0, Math.min(15, questions.length));
+      State.practiceIndex = 0;
+      State.practiceCorrect = 0;
+      State.practiceTotal = State.practiceQuestions.length;
+      State.practiceAnswers = [];
+    }
+
+    Modules._renderPracticeQuestion('vocab-practice-choice', '词汇选择题');
   },
 
   // --- 通用练习题渲染 ---
@@ -553,7 +608,14 @@ const Modules = {
       html += '</div>';
     } else if (q.type === 'choice') {
       html += '<div class="practice-question">';
-      html += '<div class="practice-instruction">' + Utils.esc(q.question) + '</div>';
+      if (q.word) {
+        html += '<div class="practice-word">' + Utils.esc(q.word) + '</div>';
+        html += '<div class="practice-phonetic">' + Utils.esc(q.phonetic) + ' <button class="btn-icon" onclick="window.__app.speak(\'' + Utils.esc(q.word) + '\')">🔊</button></div>';
+        html += '<div class="practice-pos">' + Utils.esc(q.pos) + '</div>';
+        html += '<div class="practice-hint">请选择该单词的正确中文释义</div>';
+      } else {
+        html += '<div class="practice-instruction">' + Utils.esc(q.question) + '</div>';
+      }
       html += '<div class="practice-options">';
       q.options.forEach((opt, i) => {
         html += '<div class="practice-option" data-idx="' + i + '" onclick="window.__app.selectOption(' + i + ',\'' + module + '\')">';
@@ -1139,11 +1201,21 @@ window.__app = {
     let correct = false;
 
     if (q.type === 'word-to-cn') {
-      // 检查是否匹配任何近义词
-      const userLower = userAns.toLowerCase();
-      correct = q.synonyms.some(s => {
-        const sLower = s.toLowerCase().trim();
-        return sLower === userLower || sLower.includes(userLower) || userLower.includes(sLower);
+      // 优化判定：分号/顿号分隔的多义匹配，去除标点和空格
+      const normalize = (s) => s.replace(/[；;，,。.\s]/g, '').trim().toLowerCase();
+      const userNorm = normalize(userAns);
+      // 将正确答案按分隔符拆分，逐一匹配
+      const allAcceptable = (q.meaning.split(/[;；、，,]/).map(s => s.trim())).concat(q.synonyms || []);
+      correct = allAcceptable.some(s => {
+        const sNorm = normalize(s);
+        if (!sNorm) return false;
+        // 精确匹配
+        if (sNorm === userNorm) return true;
+        // 用户答案包含完整正确答案（如输入"放弃;抛弃"匹配"放弃"）
+        if (userNorm.includes(sNorm) && sNorm.length >= 2) return true;
+        // 正确答案包含用户答案（如输入"放弃"匹配"放弃;抛弃"）—— 但用户输入至少2字
+        if (sNorm.includes(userNorm) && userNorm.length >= 2) return true;
+        return false;
       });
     } else if (q.type === 'fill-blank') {
       const correctAns = (q.answer || '').toLowerCase().trim();
@@ -1177,7 +1249,11 @@ window.__app = {
 
     setTimeout(() => {
       State.practiceIndex++;
-      Modules._renderPracticeQuestion(module, module.includes('vocab') ? '词汇练习' : module.includes('grammar') ? '语法练习' : '阅读练习');
+      let title = '阅读练习';
+      if (module.includes('vocab-practice-choice')) title = '词汇选择题';
+      else if (module.includes('vocab')) title = '词汇翻译练习';
+      else if (module.includes('grammar')) title = '语法练习';
+      Modules._renderPracticeQuestion(module, title);
     }, 1500);
   },
 
@@ -1187,8 +1263,9 @@ window.__app = {
     if (opt) opt.classList.add('selected');
     const q = State.practiceQuestions[State.practiceIndex];
     const correct = idx === q.answer;
+    const questionText = q.word ? q.word + ' (' + q.phonetic + ')' : q.question;
     State.practiceAnswers.push({
-      question: q.question,
+      question: questionText,
       userAnswer: q.options[idx],
       correctAnswer: q.options[q.answer],
       correct: correct
@@ -1196,7 +1273,7 @@ window.__app = {
     if (correct) { State.practiceCorrect++; Utils.toast('回答正确！', 'success'); }
     else {
       Utils.toast('回答错误，正确答案: ' + q.options[q.answer], 'error');
-      Storage.addWrongQuestion(module, State.currentChapter, q.question, q.options[idx], q.options[q.answer]);
+      Storage.addWrongQuestion(module, State.currentChapter, questionText, q.options[idx], q.options[q.answer]);
     }
     const fb = Utils.$('practiceFeedback');
     if (fb) {
@@ -1206,26 +1283,36 @@ window.__app = {
     }
     setTimeout(() => {
       State.practiceIndex++;
-      Modules._renderPracticeQuestion(module, module.includes('grammar') ? '语法练习' : '阅读练习');
+      let title = '阅读练习';
+      if (module.includes('vocab-practice-choice')) title = '词汇选择题';
+      else if (module.includes('vocab')) title = '词汇翻译练习';
+      else if (module.includes('grammar')) title = '语法练习';
+      Modules._renderPracticeQuestion(module, title);
     }, 1500);
   },
 
   skipQuestion(module) {
     const q = State.practiceQuestions[State.practiceIndex];
+    const questionText = q.word ? q.word + ' (' + q.phonetic + ')' : (q.sentence || q.question);
     State.practiceAnswers.push({
-      question: q.type === 'word-to-cn' ? q.word : (q.sentence || q.question),
+      question: questionText,
       userAnswer: '(跳过)',
-      correctAnswer: q.type === 'word-to-cn' ? q.meaning : (q.answer || q.options[q.answer]),
+      correctAnswer: q.type === 'word-to-cn' ? q.meaning : (q.answer !== undefined ? q.options[q.answer] : ''),
       correct: false
     });
     State.practiceIndex++;
-    Modules._renderPracticeQuestion(module, module.includes('vocab') ? '词汇练习' : module.includes('grammar') ? '语法练习' : '阅读练习');
+    let title = '阅读练习';
+    if (module.includes('vocab-practice-choice')) title = '词汇选择题';
+    else if (module.includes('vocab')) title = '词汇翻译练习';
+    else if (module.includes('grammar')) title = '语法练习';
+    Modules._renderPracticeQuestion(module, title);
   },
 
   retryPractice(module) {
     State.practiceQuestions = [];
     State.showSelector = false;
     State._vpChapter = null;
+    State._vpcChapter = null;
     State._gpChapter = null;
     State._wpChapter = null;
     Modules.render(module);
