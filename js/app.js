@@ -490,6 +490,8 @@ const Modules = {
       'trans-blank': () => Modules.transBlank(),
       'trans-input': () => Modules.transInput(),
       'wrong-book': () => Modules.wrongBook(),
+      'exam-papers': () => Modules.examPapers(),
+      'daily-checkin': () => Modules.dailyCheckin(),
       'dashboard': () => Modules.dashboard()
     };
     if (map[module]) { map[module](); Nav.updateProgress(); }
@@ -1373,7 +1375,9 @@ const Modules = {
     html += '<a class="quick-link" onclick="window.__app.nav(\'reading-learn\')">🔍 阅读文库</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'trans-blank\')">🧩 选词翻译</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'trans-input\')">✍️ 手动翻译</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'exam-papers\')">📄 真题套题</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'wrong-book\')">❌ 错题本</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'daily-checkin\')">📅 每日打卡</a>';
     html += '</div></div>';
 
     Utils.$('mainContent').innerHTML = html;
@@ -1381,13 +1385,80 @@ const Modules = {
 };
 
 // ===== 全局API（供HTML onclick调用） =====
+// ===== 打卡管理器 =====
+const CheckinManager = {
+  dateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  },
+  getData() {
+    return Storage.get('checkin', { dates: [] });
+  },
+  saveData(data) {
+    Storage.set('checkin', data);
+  },
+  checkin() {
+    const data = this.getData();
+    const today = this.dateStr(new Date());
+    if (!data.dates.includes(today)) {
+      data.dates.push(today);
+      data.lastCheckin = today;
+      this.saveData(data);
+    }
+    return data;
+  },
+  isCheckedToday() {
+    const data = this.getData();
+    return data.dates.includes(this.dateStr(new Date()));
+  },
+  getStreak() {
+    const data = this.getData();
+    if (data.dates.length === 0) return 0;
+    const sorted = [...data.dates].sort();
+    let streak = 0;
+    let d = new Date();
+    while (true) {
+      const ds = this.dateStr(d);
+      if (sorted.includes(ds)) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  },
+  autoCheckin() {
+    if (LocalAuth.isLoggedIn() && !this.isCheckedToday()) {
+      this.checkin();
+    }
+  }
+};
+
+// ===== Word文档下载 =====
+function downloadWordDoc(filename, content) {
+  const header = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + filename + '</title><style>body{font-family:"Times New Roman",serif;font-size:14pt;line-height:1.8;}h1{font-size:18pt;text-align:center;}h2{font-size:16pt;}h3{font-size:14pt;}.question{margin:8pt 0;}.options{margin-left:20pt;}.answer-key{margin-top:20pt;color:#0066cc;}</style></head><body>';
+  const footer = '</body></html>';
+  const html = header + content + footer;
+  const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename + '.doc';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 window.__app = {
-  init() { 
+  init() {
     Nav.init();
     Nav.goTo('dashboard');
     this.updateUserUI();
     this._setupAuthForms();
     Utils.initVoices();
+    // 自动打卡
+    CheckinManager.autoCheckin();
     // 已登录且在线则自动同步
     if (API.isOnline() && LocalAuth.isLoggedIn()) {
       setTimeout(() => SyncManager.syncAll(), 1000);
@@ -1420,6 +1491,199 @@ window.__app = {
   },
 
   nav(module) { Nav.goTo(module); },
+
+  // 真题查看
+  viewExamPaper(id) {
+    const papers = typeof EXAM_PAPERS !== 'undefined' ? EXAM_PAPERS : [];
+    const paper = papers.find(p => p.id === id);
+    if (!paper) { Utils.toast('未找到该套题', 'error'); return; }
+    let html = '<div class="module-header"><h2>' + Utils.esc(paper.title) + '</h2>';
+    html += '<button class="btn btn-primary" onclick="window.__app.downloadExamPaper(' + paper.id + ')">⬇ 下载Word文档</button>';
+    html += '<button class="btn btn-outline" onclick="window.__app.nav(\'exam-papers\')">← 返回列表</button></div>';
+
+    paper.sections.forEach((sec, si) => {
+      html += '<div class="section-card" style="margin-bottom:20px;">';
+      html += '<h3 style="color:var(--text);margin-bottom:12px;">' + Utils.esc(sec.title) + '</h3>';
+      html += '<p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">' + Utils.esc(sec.instruction || '') + '</p>';
+
+      if (sec.type === 'vocabulary' && sec.questions) {
+        sec.questions.forEach((q, qi) => {
+          html += '<div class="question" style="margin:12px 0;">';
+          html += '<p style="color:var(--text);">' + (qi+1) + '. ' + Utils.esc(q.q) + '</p>';
+          html += '<div class="options" style="margin-left:20px;color:var(--text-secondary);">';
+          q.options.forEach((opt, oi) => {
+            html += '<label style="display:block;"><input type="radio" name="exam-' + si + '-' + qi + '" value="' + String.fromCharCode(65+oi) + '" /> ' + String.fromCharCode(65+oi) + '. ' + Utils.esc(opt) + '</label>';
+          });
+          html += '</div></div>';
+        });
+      } else if (sec.type === 'reading' && sec.passages) {
+        sec.passages.forEach((p, pi) => {
+          html += '<div style="margin:16px 0;padding:16px;background:var(--light);border-radius:var(--radius-sm);">';
+          html += '<p style="color:var(--text);line-height:1.8;white-space:pre-wrap;">' + Utils.esc(p.text) + '</p></div>';
+          if (p.questions) {
+            p.questions.forEach((q, qi) => {
+              html += '<div class="question" style="margin:12px 0;">';
+              html += '<p style="color:var(--text);">' + (qi+1) + '. ' + Utils.esc(q.q) + '</p>';
+              html += '<div class="options" style="margin-left:20px;color:var(--text-secondary);">';
+              q.options.forEach((opt, oi) => {
+                html += '<label style="display:block;"><input type="radio" name="exam-r-' + si + '-' + pi + '-' + qi + '" value="' + String.fromCharCode(65+oi) + '" /> ' + String.fromCharCode(65+oi) + '. ' + Utils.esc(opt) + '</label>';
+              });
+              html += '</div></div>';
+            });
+          }
+        });
+      } else if (sec.type === 'cloze' && sec.blanks) {
+        if (sec.passage) html += '<div style="margin:16px 0;padding:16px;background:var(--light);border-radius:var(--radius-sm);"><p style="color:var(--text);line-height:2;">' + Utils.esc(sec.passage) + '</p></div>';
+        sec.blanks.forEach((b, bi) => {
+          html += '<div class="question" style="margin:12px 0;">';
+          html += '<p style="color:var(--text);">' + (bi+1) + '. ';
+          b.options.forEach((opt, oi) => {
+            html += '<label style="margin-right:12px;"><input type="radio" name="exam-c-' + si + '-' + bi + '" value="' + String.fromCharCode(65+oi) + '" /> ' + String.fromCharCode(65+oi) + '. ' + Utils.esc(opt) + '</label>';
+          });
+          html += '</p></div>';
+        });
+      } else if (sec.type === 'translation') {
+        if (sec.enToCn) {
+          html += '<h4 style="color:var(--text);margin:12px 0;">Section A: English to Chinese</h4>';
+          sec.enToCn.forEach((t, ti) => {
+            html += '<div style="margin:12px 0;padding:12px;background:var(--light);border-radius:var(--radius-sm);"><p style="color:var(--text);">' + (ti+1) + '. ' + Utils.esc(t.en) + '</p></div>';
+          });
+        }
+        if (sec.cnToEn) {
+          html += '<h4 style="color:var(--text);margin:12px 0;">Section B: Chinese to English</h4>';
+          sec.cnToEn.forEach((t, ti) => {
+            html += '<div style="margin:12px 0;padding:12px;background:var(--light);border-radius:var(--radius-sm);"><p style="color:var(--text);">' + (ti+1) + '. ' + Utils.esc(t.cn) + '</p></div>';
+          });
+        }
+      } else if (sec.type === 'writing') {
+        html += '<div style="margin:12px 0;padding:16px;background:var(--light);border-radius:var(--radius-sm);">';
+        html += '<p style="color:var(--text);font-weight:600;">' + Utils.esc(sec.prompt || '') + '</p>';
+        if (sec.sample) html += '<p style="color:var(--text-secondary);margin-top:12px;font-size:13px;">Sample Answer:</p><p style="color:var(--text);line-height:1.8;white-space:pre-wrap;">' + Utils.esc(sec.sample) + '</p>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+
+    // 答案
+    html += '<div class="section-card" style="margin-top:20px;border:1px solid var(--success);"><h3 style="color:var(--success);">参考答案</h3>';
+    paper.sections.forEach((sec, si) => {
+      if (sec.type === 'vocabulary' && sec.questions) {
+        html += '<p style="color:var(--text);"><strong>' + sec.title + ':</strong> ';
+        html += sec.questions.map((q, qi) => (qi+1) + '.' + q.answer).join('  ') + '</p>';
+      } else if (sec.type === 'reading' && sec.passages) {
+        html += '<p style="color:var(--text);"><strong>' + sec.title + ':</strong> ';
+        const all = [];
+        sec.passages.forEach((p, pi) => {
+          if (p.questions) p.questions.forEach((q, qi) => all.push((pi+1) + '-' + (qi+1) + '.' + q.answer));
+        });
+        html += all.join('  ') + '</p>';
+      } else if (sec.type === 'cloze' && sec.blanks) {
+        html += '<p style="color:var(--text);"><strong>' + sec.title + ':</strong> ';
+        html += sec.blanks.map((b, bi) => (bi+1) + '.' + b.answer).join('  ') + '</p>';
+      } else if (sec.type === 'translation') {
+        html += '<p style="color:var(--text);"><strong>' + sec.title + ' (参考):</strong></p>';
+        if (sec.enToCn) sec.enToCn.forEach((t, ti) => { html += '<p style="color:var(--text-secondary);font-size:13px;">' + (ti+1) + '. ' + Utils.esc(t.cn) + '</p>'; });
+        if (sec.cnToEn) sec.cnToEn.forEach((t, ti) => { html += '<p style="color:var(--text-secondary);font-size:13px;">' + (ti+1) + '. ' + Utils.esc(t.en) + '</p>'; });
+      }
+    });
+    html += '</div>';
+
+    Utils.$('mainContent').innerHTML = html;
+  },
+
+  // 下载Word文档
+  downloadExamPaper(id) {
+    const papers = typeof EXAM_PAPERS !== 'undefined' ? EXAM_PAPERS : [];
+    const paper = papers.find(p => p.id === id);
+    if (!paper) { Utils.toast('未找到该套题', 'error'); return; }
+
+    let content = '<h1>' + paper.title + '</h1>';
+    content += '<p style="text-align:center;color:#999;">' + (paper.year || '') + ' 年四川省普通高校专升本考试英语试题</p>';
+
+    paper.sections.forEach(sec => {
+      content += '<h2>' + sec.title + '</h2>';
+      content += '<p style="color:#666;font-size:12pt;">' + (sec.instruction || '') + '</p>';
+
+      if (sec.type === 'vocabulary' && sec.questions) {
+        sec.questions.forEach((q, qi) => {
+          content += '<div class="question"><p>' + (qi+1) + '. ' + q.q + '</p>';
+          content += '<div class="options">';
+          q.options.forEach((opt, oi) => {
+            content += String.fromCharCode(65+oi) + '. ' + opt + '&nbsp;&nbsp;&nbsp;';
+          });
+          content += '</div></div>';
+        });
+      } else if (sec.type === 'reading' && sec.passages) {
+        sec.passages.forEach((p, pi) => {
+          content += '<p>' + p.text + '</p>';
+          if (p.questions) {
+            p.questions.forEach((q, qi) => {
+              content += '<div class="question"><p>' + (qi+1) + '. ' + q.q + '</p>';
+              content += '<div class="options">';
+              q.options.forEach((opt, oi) => {
+                content += String.fromCharCode(65+oi) + '. ' + opt + '&nbsp;&nbsp;&nbsp;';
+              });
+              content += '</div></div>';
+            });
+          }
+        });
+      } else if (sec.type === 'cloze') {
+        if (sec.passage) content += '<p>' + sec.passage + '</p>';
+        if (sec.blanks) {
+          sec.blanks.forEach((b, bi) => {
+            content += '<div class="question"><p>' + (bi+1) + '. ';
+            b.options.forEach((opt, oi) => {
+              content += String.fromCharCode(65+oi) + '. ' + opt + '&nbsp;&nbsp;&nbsp;';
+            });
+            content += '</p></div>';
+          });
+        }
+      } else if (sec.type === 'translation') {
+        if (sec.enToCn) {
+          content += '<h3>Section A: English to Chinese</h3>';
+          sec.enToCn.forEach((t, ti) => {
+            content += '<p>' + (ti+1) + '. ' + t.en + '</p>';
+          });
+        }
+        if (sec.cnToEn) {
+          content += '<h3>Section B: Chinese to English</h3>';
+          sec.cnToEn.forEach((t, ti) => {
+            content += '<p>' + (ti+1) + '. ' + t.cn + '</p>';
+          });
+        }
+      } else if (sec.type === 'writing') {
+        content += '<p>' + (sec.prompt || '') + '</p>';
+      }
+    });
+
+    // 答案
+    content += '<h2 style="margin-top:30pt;">参考答案</h2>';
+    paper.sections.forEach(sec => {
+      if (sec.type === 'vocabulary' && sec.questions) {
+        content += '<p><strong>' + sec.title + ':</strong> ' + sec.questions.map((q, qi) => (qi+1) + '.' + q.answer).join('  ') + '</p>';
+      } else if (sec.type === 'reading' && sec.passages) {
+        const all = [];
+        sec.passages.forEach((p, pi) => { if (p.questions) p.questions.forEach((q, qi) => all.push((pi+1) + '-' + (qi+1) + '.' + q.answer)); });
+        content += '<p><strong>' + sec.title + ':</strong> ' + all.join('  ') + '</p>';
+      } else if (sec.type === 'cloze' && sec.blanks) {
+        content += '<p><strong>' + sec.title + ':</strong> ' + sec.blanks.map((b, bi) => (bi+1) + '.' + b.answer).join('  ') + '</p>';
+      } else if (sec.type === 'translation') {
+        content += '<p><strong>' + sec.title + ' (参考):</strong></p>';
+        if (sec.enToCn) sec.enToCn.forEach((t, ti) => { content += '<p>' + (ti+1) + '. ' + t.cn + '</p>'; });
+        if (sec.cnToEn) sec.cnToEn.forEach((t, ti) => { content += '<p>' + (ti+1) + '. ' + t.en + '</p>'; });
+      }
+    });
+
+    downloadWordDoc(paper.title, content);
+    Utils.toast('Word文档已下载', 'success');
+  },
+
+  // 日历月份切换
+  _changeCalMonth(delta) {
+    if (!State._calDate) State._calDate = new Date();
+    State._calDate.setMonth(State._calDate.getMonth() + delta);
+    Modules._renderCalendar();
+  },
   back() { State.showSelector = true; Modules.render(State.currentModule); },
   backPractice(module) {
     State.showSelector = true;
@@ -1932,6 +2196,119 @@ window.__app = {
       Utils.toast('已清空全部错题', 'success');
       Modules.wrongBook();
     }
+  },
+
+  // ===== 真题套题 =====
+  examPapers() {
+    const papers = typeof EXAM_PAPERS !== 'undefined' ? EXAM_PAPERS : [];
+    let html = '<div class="module-header"><h2>📄 四川省专升本英语真题</h2></div>';
+    html += '<div class="exam-intro" style="margin-bottom:20px;padding:16px;background:var(--light);border-radius:var(--radius-sm);border-left:4px solid var(--secondary);">';
+    html += '<p style="color:var(--text-secondary);font-size:14px;">共 ' + papers.length + ' 套真题，支持在线查看和下载Word文档。点击套题卡片查看详情，可下载打印复习。</p>';
+    html += '</div>';
+    html += '<div class="chapter-grid">';
+    papers.forEach(p => {
+      html += '<div class="chapter-card" onclick="window.__app.viewExamPaper(' + p.id + ')">';
+      html += '<div class="chapter-num">' + p.id + '</div>';
+      html += '<div class="chapter-label">' + Utils.esc(p.title) + '</div>';
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--gray);">' + (p.year || '') + ' 年</div>';
+      html += '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="event.stopPropagation();window.__app.downloadExamPaper(' + p.id + ')">⬇ 下载Word</button></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    Utils.$('mainContent').innerHTML = html;
+  },
+
+  // ===== 每日打卡 =====
+  dailyCheckin() {
+    const data = CheckinManager.getData();
+    const today = new Date();
+    const todayStr = CheckinManager.dateStr(today);
+    const checkedToday = data.dates.includes(todayStr);
+    const streak = CheckinManager.getStreak();
+    const totalDays = data.dates.length;
+
+    let html = '<div class="checkin-page">';
+    html += '<div class="checkin-header">';
+    html += '<h2 style="color:var(--text);">📅 每日打卡</h2>';
+    html += '<div class="checkin-stats-row">';
+    html += '<div class="checkin-stat"><span class="checkin-stat-num">' + streak + '</span><span class="checkin-stat-label">连续打卡</span></div>';
+    html += '<div class="checkin-stat"><span class="checkin-stat-num">' + totalDays + '</span><span class="checkin-stat-label">累计天数</span></div>';
+    html += '<div class="checkin-stat"><span class="checkin-stat-num">' + (checkedToday ? '✅' : '⭕') + '</span><span class="checkin-stat-label">今日</span></div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 日历
+    html += '<div class="checkin-calendar-wrapper">';
+    html += '<div class="checkin-calendar">';
+    html += '<div class="calendar-nav">';
+    html += '<button class="btn btn-sm btn-outline" onclick="window.__app._changeCalMonth(-1)">‹</button>';
+    html += '<span class="calendar-month-label" id="calMonthLabel"></span>';
+    html += '<button class="btn btn-sm btn-outline" onclick="window.__app._changeCalMonth(1)">›</button>';
+    html += '</div>';
+    html += '<div class="calendar-grid" id="calGrid"></div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 打卡记录
+    if (totalDays > 0) {
+      html += '<div class="checkin-history">';
+      html += '<h3 style="color:var(--text);">最近打卡记录</h3>';
+      const recent = [...data.dates].sort().reverse().slice(0, 10);
+      html += '<div class="checkin-history-list">';
+      recent.forEach(d => {
+        const date = new Date(d);
+        const week = '日一二三四五六'[date.getDay()];
+        html += '<div class="checkin-history-item">';
+        html += '<span class="checkin-history-date">' + (date.getMonth()+1) + '月' + date.getDate() + '日</span>';
+        html += '<span class="checkin-history-week">周' + week + '</span>';
+        html += '<span class="checkin-history-badge">✅ 已打卡</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    Utils.$('mainContent').innerHTML = html;
+    State._calDate = new Date();
+    Modules._renderCalendar();
+  },
+
+  _renderCalendar() {
+    const data = CheckinManager.getData();
+    const d = State._calDate || new Date();
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+    const label = Utils.$('calMonthLabel');
+    if (label) label.textContent = year + '年 ' + monthNames[month];
+
+    const grid = Utils.$('calGrid');
+    if (!grid) return;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = CheckinManager.dateStr(new Date());
+
+    let html = '';
+    ['日','一','二','三','四','五','六'].forEach(w => {
+      html += '<div class="cal-weekday">' + w + '</div>';
+    });
+    for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+      const checked = data.dates.includes(dateStr);
+      const isToday = dateStr === todayStr;
+      let cls = 'cal-day';
+      if (checked) cls += ' checked';
+      if (isToday) cls += ' today';
+      html += '<div class="' + cls + '">';
+      html += '<span class="cal-day-num">' + day + '</span>';
+      if (checked) html += '<span class="cal-day-check">✓</span>';
+      html += '</div>';
+    }
+    grid.innerHTML = html;
   }
 };
 
@@ -2035,7 +2412,8 @@ window.__app.doLogin = async function(username, password) {
       LocalAuth.setCurrentUser(res.user);
       this.updateUserUI();
       this.closeAuthModal();
-      Utils.toast('登录成功！', 'success');
+      CheckinManager.autoCheckin();
+      Utils.toast('登录成功！' + (!CheckinManager.isCheckedToday() ? '' : ' 今日已打卡'), 'success');
       // 如果在线则同步数据
       if (API.isOnline()) {
         SyncManager.syncAll();
