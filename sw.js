@@ -3,7 +3,7 @@
  * 实现离线缓存和 PWA 功能
  */
 
-const CACHE_NAME = 'english-learning-v7';
+const CACHE_NAME = 'english-learning-v8';
 const OFFLINE_URL = '/';
 
 // 需要缓存的核心资源

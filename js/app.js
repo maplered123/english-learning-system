@@ -1427,7 +1427,7 @@ const CheckinManager = {
     return streak;
   },
   autoCheckin() {
-    if (LocalAuth.isLoggedIn() && !this.isCheckedToday()) {
+    if (!this.isCheckedToday()) {
       this.checkin();
     }
   }
@@ -1682,6 +1682,16 @@ window.__app = {
     if (!State._calDate) State._calDate = new Date();
     State._calDate.setMonth(State._calDate.getMonth() + delta);
     this._renderCalendar();
+  },
+  // 手动打卡
+  manualCheckin() {
+    if (CheckinManager.isCheckedToday()) {
+      Utils.toast('今日已打卡', 'info');
+      return;
+    }
+    CheckinManager.checkin();
+    Utils.toast('🎉 打卡成功！', 'success');
+    this.dailyCheckin();
   },
   back() { State.showSelector = true; Modules.render(State.currentModule); },
   backPractice(module) {
@@ -2234,6 +2244,13 @@ window.__app = {
     html += '<div class="checkin-stat"><span class="checkin-stat-num">' + totalDays + '</span><span class="checkin-stat-label">累计天数</span></div>';
     html += '<div class="checkin-stat"><span class="checkin-stat-num">' + (checkedToday ? '✅' : '⭕') + '</span><span class="checkin-stat-label">今日</span></div>';
     html += '</div>';
+
+    // 一键打卡按钮
+    if (checkedToday) {
+      html += '<button class="btn btn-lg btn-success checkin-btn" disabled style="margin-top:16px;cursor:default;opacity:0.8;">✅ 今日已打卡</button>';
+    } else {
+      html += '<button class="btn btn-lg btn-primary checkin-btn" onclick="window.__app.manualCheckin()" style="margin-top:16px;">✋ 立即打卡</button>';
+    }
     html += '</div>';
 
     // 日历

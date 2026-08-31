@@ -2745,6 +2745,22 @@ body {
     color: var(--gray);
     margin-top: 4px;
 }
+.checkin-btn {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    display: block;
+    font-size: 16px;
+    padding: 14px 32px;
+    border-radius: 28px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(74, 108, 247, 0.3);
+    transition: all 0.3s ease;
+}
+.checkin-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 108, 247, 0.4);
+}
 .checkin-calendar-wrapper {
     border-radius: var(--radius);
     overflow: hidden;
