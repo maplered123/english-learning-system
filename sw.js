@@ -3,7 +3,7 @@
  * 实现离线缓存和 PWA 功能
  */
 
-const CACHE_NAME = 'english-learning-v3';
+const CACHE_NAME = 'english-learning-v5';
 const OFFLINE_URL = '/';
 
 // 需要缓存的核心资源
@@ -79,23 +79,29 @@ self.addEventListener('fetch', (event) => {
   }
   
   // 静态资源：网络优先，离线回退缓存
+  var cacheKey = new URL(request.url);
+  var noQueryUrl = cacheKey.origin + cacheKey.pathname;
+  
   event.respondWith(
     fetch(request).then((networkResponse) => {
       if (networkResponse && networkResponse.status === 200) {
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseToCache);
+        var responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(noQueryUrl, responseToCache);
         });
       }
       return networkResponse;
-    }).catch(() => {
-      // 网络失败，回退缓存
-      return caches.match(request).then((cachedResponse) => {
+    }).catch(function() {
+      // 网络失败，回退缓存（忽略查询参数）
+      return caches.match(noQueryUrl).then(function(cachedResponse) {
         if (cachedResponse) return cachedResponse;
-        if (request.mode === 'navigate') {
-          return caches.match(OFFLINE_URL);
-        }
-        return new Response('离线状态', { status: 503 });
+        return caches.match(request).then(function(cachedResp) {
+          if (cachedResp) return cachedResp;
+          if (request.mode === 'navigate') {
+            return caches.match(OFFLINE_URL);
+          }
+          return new Response('离线状态', { status: 503 });
+        });
       });
     })
   );

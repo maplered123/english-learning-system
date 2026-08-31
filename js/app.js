@@ -490,9 +490,9 @@ const Modules = {
       'trans-blank': () => Modules.transBlank(),
       'trans-input': () => Modules.transInput(),
       'wrong-book': () => Modules.wrongBook(),
-      'exam-papers': () => Modules.examPapers(),
-      'daily-checkin': () => Modules.dailyCheckin(),
-      'dictionary': () => Modules.dictionary(),
+      'exam-papers': () => window.__app.examPapers(),
+      'daily-checkin': () => window.__app.dailyCheckin(),
+      'dictionary': () => window.__app.dictionary(),
       'dashboard': () => Modules.dashboard()
     };
     if (map[module]) { map[module](); Nav.updateProgress(); }
@@ -1684,7 +1684,7 @@ window.__app = {
   _changeCalMonth(delta) {
     if (!State._calDate) State._calDate = new Date();
     State._calDate.setMonth(State._calDate.getMonth() + delta);
-    Modules._renderCalendar();
+    this._renderCalendar();
   },
   back() { State.showSelector = true; Modules.render(State.currentModule); },
   backPractice(module) {
@@ -1696,11 +1696,6 @@ window.__app = {
   },
 
   speak(text) { Utils.speak(text); },
-
-  // 词典查词
-  dictSearch() { Modules.dictSearch(); },
-  dictLookup(word) { Modules.dictLookup(word); },
-  dictSuggest(query) { Modules.dictSuggest(query); },
 
   showImage(word, meaning) {
     const url = Utils.getImageUrl(word, meaning);
@@ -2278,7 +2273,7 @@ window.__app = {
     html += '</div>';
     Utils.$('mainContent').innerHTML = html;
     State._calDate = new Date();
-    Modules._renderCalendar();
+    this._renderCalendar();
   },
 
   _renderCalendar() {
