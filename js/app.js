@@ -482,7 +482,6 @@ const Modules = {
       'vocab-practice': () => Modules.vocabPractice(),
       'vocab-practice-choice': () => Modules.vocabPracticeChoice(),
       'grammar-learn': () => Modules.grammarLearn(),
-      'grammar-practice': () => Modules.grammarPractice(),
       'writing-learn': () => Modules.writingLearn(),
       'writing-practice': () => Modules.writingPractice(),
       'reading-learn': () => Modules.readingLearn(),
@@ -1347,7 +1346,6 @@ const Modules = {
       { key: 'vocab-learn', name: '词汇学习', total: VOCAB_DATA.length },
       { key: 'vocab-practice', name: '词汇练习', total: VOCAB_DATA.length },
       { key: 'grammar-learn', name: '语法学习', total: G_DATA.chapters.length },
-      { key: 'grammar-practice', name: '语法练习', total: G_DATA.chapters.length },
       { key: 'writing-learn', name: '应用文学习', total: W_DATA.chapters.length },
       { key: 'writing-practice', name: '应用文练习', total: W_DATA.chapters.length }
     ];
@@ -1370,7 +1368,6 @@ const Modules = {
     html += '<a class="quick-link" onclick="window.__app.nav(\'vocab-practice\')">✏️ 词汇翻译练习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'vocab-practice-choice\')">🔘 词汇选择题</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'grammar-learn\')">📐 语法学习</a>';
-    html += '<a class="quick-link" onclick="window.__app.nav(\'grammar-practice\')">📝 语法练习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'writing-learn\')">✒️ 应用文学习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'writing-practice\')">📋 应用文练习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'reading-learn\')">🔍 阅读文库</a>';
