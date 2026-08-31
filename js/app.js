@@ -1244,6 +1244,8 @@ const Modules = {
     html += '<a class="quick-link" onclick="window.__app.nav(\'writing-learn\')">✒️ 应用文学习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'writing-practice\')">📋 应用文练习</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'reading-learn\')">🔍 阅读文库</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'trans-blank\')">🔤 选词翻译</a>';
+    html += '<a class="quick-link" onclick="window.__app.nav(\'trans-input\')">✍️ 手动翻译</a>';
     html += '<a class="quick-link" onclick="window.__app.nav(\'wrong-book\')">❌ 错题本</a>';
     html += '</div></div>';
 
