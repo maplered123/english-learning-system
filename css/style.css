@@ -2259,6 +2259,19 @@ body {
     .vocab-row .vw, .vocab-row .vp {
         min-width: auto;
     }
+
+    .auth-modal {
+        max-width: 92%;
+        width: 92%;
+    }
+
+    .auth-form {
+        padding: 16px;
+    }
+
+    .modal {
+        width: 92%;
+    }
 }
 
 /* ===== PWA 安装横幅 ===== */

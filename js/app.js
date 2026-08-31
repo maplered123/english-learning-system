@@ -4,8 +4,17 @@
 (function() {
 'use strict';
 
-// ===== 数据合并 =====
-const VOCAB_DATA = [].concat(VOCAB_PART1 || [], VOCAB_PART2 || [], VOCAB_PART3 || [], VOCAB_PART4 || [], VOCAB_PART5 || []);
+// ===== 数据合并（安全引用，防止数据文件加载失败导致崩溃） =====
+const VOCAB_DATA = [].concat(
+  typeof VOCAB_PART1 !== 'undefined' ? VOCAB_PART1 : [],
+  typeof VOCAB_PART2 !== 'undefined' ? VOCAB_PART2 : [],
+  typeof VOCAB_PART3 !== 'undefined' ? VOCAB_PART3 : [],
+  typeof VOCAB_PART4 !== 'undefined' ? VOCAB_PART4 : [],
+  typeof VOCAB_PART5 !== 'undefined' ? VOCAB_PART5 : []
+);
+const G_DATA = typeof G_DATA !== 'undefined' ? G_DATA : { chapters: [] };
+const W_DATA = typeof W_DATA !== 'undefined' ? W_DATA : { chapters: [] };
+const R_DATA = typeof R_DATA !== 'undefined' ? R_DATA : { articles: [] };
 
 // ===== API 配置 =====
 const API = {
@@ -611,13 +620,13 @@ const Modules = {
 
   // --- 语法学习 ---
   grammarLearn() {
-    const total = GRAMMAR_DATA.chapters.length;
+    const total = G_DATA.chapters.length;
     if (State.showSelector) {
       State.showSelector = false;
       Modules.chapterSelector('语法学习', total, () => Modules.grammarLearn());
       return;
     }
-    const ch = GRAMMAR_DATA.chapters.find(c => c.id === State.currentChapter) || GRAMMAR_DATA.chapters[0];
+    const ch = G_DATA.chapters.find(c => c.id === State.currentChapter) || G_DATA.chapters[0];
 
     let html = '<div class="module-header">';
     html += '<button class="btn btn-sm btn-outline" onclick="window.__app.back()">← 返回章节</button>';
@@ -638,7 +647,7 @@ const Modules = {
 
   // --- 语法练习 ---
   grammarPractice() {
-    const total = GRAMMAR_DATA.chapters.length;
+    const total = G_DATA.chapters.length;
     if (State.showSelector) {
       State.showSelector = false;
       Modules.chapterSelector('语法练习', total, () => Modules.grammarPractice());
@@ -647,7 +656,7 @@ const Modules = {
 
     if (State.practiceQuestions.length === 0 || State._gpChapter !== State.currentChapter) {
       State._gpChapter = State.currentChapter;
-      const ch = GRAMMAR_DATA.chapters.find(c => c.id === State.currentChapter) || GRAMMAR_DATA.chapters[0];
+      const ch = G_DATA.chapters.find(c => c.id === State.currentChapter) || G_DATA.chapters[0];
       const questions = [];
       ch.c.forEach(line => {
         // 从语法内容生成选择题
@@ -682,13 +691,13 @@ const Modules = {
 
   // --- 应用文学习 ---
   writingLearn() {
-    const total = WRITING_DATA.chapters.length;
+    const total = W_DATA.chapters.length;
     if (State.showSelector) {
       State.showSelector = false;
       Modules.chapterSelector('应用文学习', total, () => Modules.writingLearn());
       return;
     }
-    const ch = WRITING_DATA.chapters.find(c => c.id === State.currentChapter) || WRITING_DATA.chapters[0];
+    const ch = W_DATA.chapters.find(c => c.id === State.currentChapter) || W_DATA.chapters[0];
 
     let html = '<div class="module-header">';
     html += '<button class="btn btn-sm btn-outline" onclick="window.__app.back()">← 返回章节</button>';
@@ -733,7 +742,7 @@ const Modules = {
 
   // --- 应用文练习 ---
   writingPractice() {
-    const total = WRITING_DATA.chapters.length;
+    const total = W_DATA.chapters.length;
     if (State.showSelector) {
       State.showSelector = false;
       Modules.chapterSelector('应用文练习', total, () => Modules.writingPractice());
@@ -742,7 +751,7 @@ const Modules = {
 
     if (State.practiceQuestions.length === 0 || State._wpChapter !== State.currentChapter) {
       State._wpChapter = State.currentChapter;
-      const ch = WRITING_DATA.chapters.find(c => c.id === State.currentChapter) || WRITING_DATA.chapters[0];
+      const ch = W_DATA.chapters.find(c => c.id === State.currentChapter) || W_DATA.chapters[0];
       const questions = [];
 
       // 从开头金句中出翻译题
@@ -806,7 +815,7 @@ const Modules = {
 
   // --- 阅读文库 ---
   readingLearn() {
-    const articles = READING_DATA.articles;
+    const articles = R_DATA.articles;
     let html = '<div class="module-header"><h2>阅读文库</h2></div>';
     html += '<div class="search-bar">';
     html += '<input type="text" id="readingSearch" placeholder="搜索文章标题、主题或关键词..." autocomplete="off" />';
@@ -879,7 +888,7 @@ const Modules = {
 
   // --- 阅读练习 ---
   readingPractice() {
-    const articles = READING_DATA.articles;
+    const articles = R_DATA.articles;
     if (State.showSelector) {
       State.showSelector = false;
       let html = '<div class="module-header"><h2>阅读练习</h2></div>';
@@ -1030,10 +1039,10 @@ const Modules = {
     const modules = [
       { key: 'vocab-learn', name: '词汇学习', total: VOCAB_DATA.length },
       { key: 'vocab-practice', name: '词汇练习', total: VOCAB_DATA.length },
-      { key: 'grammar-learn', name: '语法学习', total: GRAMMAR_DATA.chapters.length },
-      { key: 'grammar-practice', name: '语法练习', total: GRAMMAR_DATA.chapters.length },
-      { key: 'writing-learn', name: '应用文学习', total: WRITING_DATA.chapters.length },
-      { key: 'writing-practice', name: '应用文练习', total: WRITING_DATA.chapters.length }
+      { key: 'grammar-learn', name: '语法学习', total: G_DATA.chapters.length },
+      { key: 'grammar-practice', name: '语法练习', total: G_DATA.chapters.length },
+      { key: 'writing-learn', name: '应用文学习', total: W_DATA.chapters.length },
+      { key: 'writing-practice', name: '应用文练习', total: W_DATA.chapters.length }
     ];
 
     html += '<div class="dashboard-section"><h3>各模块进度</h3>';
@@ -1278,7 +1287,7 @@ window.__app = {
     const kw = Utils.$('readingSearch').value.trim().toLowerCase();
     const list = Utils.$('articleList');
     if (!list) return;
-    const articles = READING_DATA.articles.filter(a => {
+    const articles = R_DATA.articles.filter(a => {
       return a.title.toLowerCase().includes(kw) ||
              a.titleCn.includes(kw) ||
              a.category.toLowerCase().includes(kw) ||
@@ -1298,7 +1307,7 @@ window.__app = {
   filterReading(cat) {
     const list = Utils.$('articleList');
     if (!list) return;
-    const articles = READING_DATA.articles.filter(a => a.category === cat);
+    const articles = R_DATA.articles.filter(a => a.category === cat);
     list.innerHTML = articles.map(a => {
       return '<div class="article-card" onclick="window.__app.viewArticle(' + a.id + ')">' +
         '<div class="article-title">' + Utils.esc(a.title) + '</div>' +
@@ -1309,7 +1318,7 @@ window.__app = {
   },
 
   viewArticle(id) {
-    const a = READING_DATA.articles.find(ar => ar.id === id);
+    const a = R_DATA.articles.find(ar => ar.id === id);
     if (a) Modules._renderArticle(a);
   },
 
