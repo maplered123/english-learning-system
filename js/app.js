@@ -345,55 +345,33 @@ const Utils = {
   speak(text) {
     const word = text.trim();
     const isShort = word.split(/\s+/).length <= 3;
-    if (isShort) {
-      this._playAudioWord(word);
-    } else {
-      this._speakFallback(word);
-    }
-  },
-  async _playAudioWord(word) {
-    // 1. 同源 Cloudflare Function 代理（解决所有 CORS 问题）
-    try {
-      const resp = await fetch('/api/tts?word=' + encodeURIComponent(word) + '&type=2');
-      if (resp.ok) {
-        const blob = await resp.blob();
-        await this._playBlob(blob);
-        return;
-      }
-    } catch (e) { /* try next */ }
-    // 2. 尝试美音
-    try {
-      const resp = await fetch('/api/tts?word=' + encodeURIComponent(word) + '&type=1');
-      if (resp.ok) {
-        const blob = await resp.blob();
-        await this._playBlob(blob);
-        return;
-      }
-    } catch (e) { /* try next */ }
-    // 3. StreamElements TTS 备用
-    try {
-      const seUrl = 'https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(word);
-      const resp = await fetch(seUrl);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        await this._playBlob(blob);
-        return;
-      }
-    } catch (e) { /* fallback */ }
-    // 4. 最终后备：浏览器 TTS
-    this._speakFallback(word);
-  },
-  async _playBlob(blob) {
+
     let audioEl = document.getElementById('tts-audio');
     if (!audioEl) {
       audioEl = document.createElement('audio');
       audioEl.id = 'tts-audio';
+      audioEl.preload = 'auto';
       audioEl.style.display = 'none';
       document.body.appendChild(audioEl);
     }
-    const objUrl = URL.createObjectURL(blob);
-    audioEl.src = objUrl;
-    await audioEl.play();
+
+    if (isShort) {
+      // 同步设置 src + play，保持用户手势上下文
+      audioEl.src = '/api/tts?word=' + encodeURIComponent(word) + '&type=2';
+      audioEl.load();
+      audioEl.play().catch(() => {
+        // 同源失败，尝试直接有道
+        audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
+        audioEl.load();
+        audioEl.play().catch(() => {
+          audioEl.src = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=1';
+          audioEl.load();
+          audioEl.play().catch(() => this._speakFallback(word));
+        });
+      });
+    } else {
+      this._speakFallback(word);
+    }
   },
   _speakFallback(text) {
     if ('speechSynthesis' in window && this._voicesLoaded) {
